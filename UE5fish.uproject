@@ -1,0 +1,30 @@
+{
+	"FileVersion": 3,
+	"EngineAssociation": "5.5",
+	"Category": "",
+	"Description": "",
+	"Modules": [
+		{
+			"Name": "UE5fish",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		},
+		{
+			"Name": "YourModuleName",
+			"Type": "Editor",
+			"LoadingPhase": "Default",
+			"AdditionalDependencies": [
+				"UnrealEd"
+			]
+		}
+	],
+	"Plugins": [
+		{
+			"Name": "ModelingToolsEditorMode",
+			"Enabled": true,
+			"TargetAllowList": [
+				"Editor"
+			]
+		}
+	]
+}
