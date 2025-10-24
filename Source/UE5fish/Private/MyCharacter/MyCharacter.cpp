@@ -5,18 +5,29 @@
 #include "Engine/LocalPlayer.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
+#include "Components/SceneComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "GameFramework/Controller.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "InputActionValue.h"
+#include "Kismet/GameplayStatics.h"
+#include "BoatPawn.h"
 
 // Sets default values
 AMyCharacter::AMyCharacter()
 {
  	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
+
+	// Set size for collision capsule
+	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.0f);
+
+	// Don't rotate when the controller rotates. Let that just affect the camera.
+	bUseControllerRotationPitch = false;
+	bUseControllerRotationYaw = false;
+	bUseControllerRotationRoll = false;
 
 	// Configure character movement
 	GetCharacterMovement()->bOrientRotationToMovement = true; // Character moves in the direction of input...	
@@ -87,6 +98,13 @@ void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 
 		// Looking
 		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &AMyCharacter::Look);
+
+		//Interact
+		EnhancedInputComponent->BindAction(InteractAction, ETriggerEvent::Triggered, this, &AMyCharacter::Interact);
+
+		//Exit
+		//EnhancedInputComponent->BindAction(ExitBoatAction, ETriggerEvent::Triggered, this, &AMyCharacter::ExitBoat);
+
 	}
 	
 }
@@ -127,3 +145,66 @@ void AMyCharacter::Look(const FInputActionValue& Value)
 	}
 }
 
+void AMyCharacter::Interact(const FInputActionValue& Value)
+{
+	FVector MyLoc = GetActorLocation();
+
+	// 近くのボートを探す
+	TArray<AActor*> FoundBoats;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ABoatPawn::StaticClass(), FoundBoats);
+
+	for (AActor* Boat : FoundBoats)
+	{
+		float Dist = FVector::Dist(MyLoc, Boat->GetActorLocation());
+		if (Dist < 300.0f)
+		{
+			ABoatPawn* BoatPawn = Cast<ABoatPawn>(Boat);
+			if (BoatPawn && !BoatPawn->bHasDriver)
+			{
+				APlayerController* PC = Cast<APlayerController>(GetController());
+				if (PC)
+				{
+					PC->Possess(BoatPawn);
+					BoatPawn->bHasDriver = true;
+					BoatPawn->SetOwner(this);
+					CurrentBoat = BoatPawn;
+					bIsInBoat = true;
+
+					// キャラを座席にアタッチ（運転席）
+					AttachToComponent(BoatPawn->SeatPosition, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
+					SetActorHiddenInGame(false);
+					SetActorEnableCollision(false);
+
+					if (BoatPawn->BoatCamera)
+					{
+						PC->SetViewTargetWithBlend(BoatPawn, 0.5f, EViewTargetBlendFunction::VTBlend_Cubic);
+					}
+					
+				}
+				break;
+			}
+		}
+	}
+}
+
+//void AMyCharacter::ExitBoat(const FInputActionValue& Value)
+//{
+//	if (!bIsInBoat || !CurrentBoat) return;
+//
+//	APlayerController* PC = Cast<APlayerController>(CurrentBoat->GetController());
+//	if (PC)
+//	{
+//		CurrentBoat->bHasDriver = false;
+//		DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
+//
+//		FVector ExitLoc = CurrentBoat->GetActorLocation() + CurrentBoat->GetActorRightVector() * 200.0f;
+//		SetActorLocation(ExitLoc);
+//		SetActorEnableCollision(true);
+//
+//		PC->UnPossess();
+//		PC->Possess(this);
+//
+//		bIsInBoat = false;
+//		CurrentBoat = nullptr;
+//	}
+//}

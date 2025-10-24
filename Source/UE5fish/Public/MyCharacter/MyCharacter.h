@@ -36,6 +36,14 @@ class UE5FISH_API AMyCharacter : public ACharacter
 	//視点アクション
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* LookAction;
+
+	//インタラクト
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	UInputAction* InteractAction;
+
+	/*Exit
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	UInputAction* ExitBoatAction;*/
 public:
 	// Sets default values for this character's properties
 	AMyCharacter();
@@ -48,6 +56,10 @@ protected:
 
 	void Look(const FInputActionValue& Value);
 
+	void Interact(const FInputActionValue& Value);
+	
+	//void ExitBoat(const FInputActionValue& Value);
+
 public:	
 	// Called every frame
 	//virtual void Tick(float DeltaTime) override;
@@ -57,9 +69,14 @@ protected:
 
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+
 public:
 	FORCEINLINE class USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
 
 	FORCEINLINE class UCameraComponent* GetFollowCamera() const { return FollowCamera; }
 
+public:
+
+	bool bIsInBoat = false;
+	class ABoatPawn* CurrentBoat = nullptr;
 };
