@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+ï»¿// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "BoatPawn.h"
@@ -24,7 +24,7 @@ ABoatPawn::ABoatPawn()
 	BoatMesh->SetLinearDamping(0.5f);
 	BoatMesh->SetAngularDamping(0.5f);
 
-	//ÀÈ‚ÌˆÊ’u‚ğİ’è
+	//åº§å¸­ã®ä½ç½®ã‚’è¨­å®š
 	SeatPosition = CreateDefaultSubobject<USceneComponent>(TEXT("SeatPosition"));
 	SeatPosition->SetupAttachment(RootComponent);
 	SeatPosition->SetRelativeLocation(FVector(0.0f, 0.0f, 80.0f));
@@ -32,14 +32,19 @@ ABoatPawn::ABoatPawn()
 	// Create a camera boom (pulls in towards the player if there is a collision)
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
 	CameraBoom->SetupAttachment(RootComponent);
-	CameraBoom->TargetArmLength = 400.0f; // The camera follows at this distance behind the character	
-	CameraBoom->bUsePawnControlRotation = true; // Rotate the arm based on the controller
-
+	CameraBoom->TargetArmLength = 600.0f; // The camera follows at this distance behind the character	
+	CameraBoom->bUsePawnControlRotation = false; // Rotate the arm based on the controller
+	CameraBoom->SetRelativeRotation(FRotator(-20.0f, 0.0f, 0.0f));
 
 	// Create a follow camera
 	BoatCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
 	BoatCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName); // Attach the camera to the end of the boom and let the boom adjust to match the controller orientation
 	BoatCamera->bUsePawnControlRotation = false; // Camera does not rotate relative to arm
+	BoatCamera->SetFieldOfView(90.0f);
+
+	CameraBoom->bEnableCameraLag = true;
+	CameraBoom->CameraLagSpeed = 3.0f;
+	CameraBoom->CameraRotationLagSpeed = 5.0f;
 
 	bHasDriver = false;
 
@@ -73,14 +78,43 @@ void ABoatPawn::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	FVector Force = BoatMesh->GetForwardVector() * ForwardInput * EnginPower;
+	if (!bHasDriver) return;
+
+	// ç¾åœ¨ã®é€Ÿåº¦
+	FVector Velocity = BoatMesh->GetPhysicsLinearVelocity();
+	float Speed = Velocity.Size();
+
+	// --- æ¨é€²åŠ› ---
+	FVector Forward = GetActorForwardVector();
+	FVector Force = Forward * ForwardInput * EnginPower;
 	BoatMesh->AddForce(Force);
 
-	FVector Torque = FVector(0.0f, 0.0f, TurnInput * TurnSpeed);
-	BoatMesh->AddTorqueInRadians(Torque);
+	// --- ã‚¹ãƒ ãƒ¼ã‚ºãªæ—‹å›ï¼ˆé€Ÿåº¦ã«æ¯”ä¾‹ï¼‰---
+	if (Speed > 10.0f)
+	{
+		// ã‚¹ãƒ”ãƒ¼ãƒ‰ãŒé€Ÿã„ã»ã©æ—‹å›ã§ãã‚‹ï¼ˆ0ã€œ1ï¼‰
+		float TurnRatio = FMath::Clamp(Speed / 2000.0f, 0.0f, 1.0f);
+		// å®Ÿéš›ã®å›è»¢é‡ã‚’è¨ˆç®—
+		float TurnAmount = TurnInput * TurnSpeed * TurnRatio * DeltaTime;
 
+		// ç¾åœ¨è§’åº¦
+		FRotator CurrentRot = GetActorRotation();
+		// ç›®æ¨™è§’åº¦
+		FRotator TargetRot = CurrentRot;
+		TargetRot.Yaw += TurnAmount;
+
+		// æ»‘ã‚‰ã‹ã«è£œé–“ã—ã¦å›ã™
+		FRotator SmoothedRot = FMath::RInterpTo(CurrentRot, TargetRot, DeltaTime, 3.0f);
+		SetActorRotation(SmoothedRot);
+	}
+
+	// --- æŠµæŠ— ---
+	const float LinearDrag = 0.8f;
+	FVector DragForce = -Velocity * LinearDrag;
+	BoatMesh->AddForce(DragForce);
+
+	// --- æµ®åŠ› ---
 	ApplyBuoyancy();
-
 }
 
 
@@ -112,25 +146,27 @@ void ABoatPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 void ABoatPawn::BoatMove(const FInputActionValue& Value)
 {
 	if (!bHasDriver) return;
-	// “ü—Í’l‚ğ FVector2D ‚Åæ“¾
+	// å…¥åŠ›å€¤ã‚’ FVector2D ã§å–å¾—
 	FVector2D Movement = Value.Get<FVector2D>();
-	float BoatForwardInput = Movement.Y; // W/S
-	float BoatRightInput = Movement.X; // A/D
+	// å‰é€²å¾Œé€€å…¥åŠ›
+	ForwardInput = Movement.Y;
+	// å·¦å³æ—‹å›å…¥åŠ›
+	TurnInput = Movement.X;
 
 	if (UStaticMeshComponent* Mesh = Cast<UStaticMeshComponent>(GetRootComponent()))
 	{
-		// ‘OŒã—Í
-		FVector Force = GetActorForwardVector() * BoatForwardInput * 200000.f;
-		// ¶‰E—Íiù‰ñ‚Í•Ê‚Å‚â‚éê‡‚Í‰Á‚¦‚È‚¢j
-		Force += GetActorRightVector() * BoatRightInput * 100000.f;
+		// å‰å¾ŒåŠ›
+		FVector Force = GetActorForwardVector() * ForwardInput * 200000.f;
+		// å·¦å³åŠ›ï¼ˆæ—‹å›ã¯åˆ¥ã§ã‚„ã‚‹å ´åˆã¯åŠ ãˆãªã„ï¼‰
+		Force += GetActorRightVector() * TurnInput * 100000.f;
 
 		Mesh->AddForce(Force);
 
-		// …’ïRi‘¬“x‚Ì‹t•ûŒüj
+		// æ°´æŠµæŠ—ï¼ˆé€Ÿåº¦ã®é€†æ–¹å‘ï¼‰
 		FVector Velocity = Mesh->GetPhysicsLinearVelocity();
 		const float DragCoefficient = 300.f;
 		FVector DragForce = -Velocity * DragCoefficient;
-		DragForce.Z = 0; // •‚—Í‚É‚Í‰e‹¿‚µ‚È‚¢
+		DragForce.Z = 0; // æµ®åŠ›ã«ã¯å½±éŸ¿ã—ãªã„
 		Mesh->AddForce(DragForce);
 	}
 }
@@ -153,20 +189,20 @@ void ABoatPawn::ExitBoat(const FInputActionValue& Value)
 {
 	if (!bHasDriver) return;
 
-	// ƒvƒŒƒCƒ„[ƒRƒ“ƒgƒ[ƒ‰‚ğæ“¾
+	// ãƒ—ãƒ¬ã‚¤ãƒ¤ãƒ¼ã‚³ãƒ³ãƒˆãƒ­ãƒ¼ãƒ©ã‚’å–å¾—
 	APlayerController* PC = Cast<APlayerController>(GetController());
 	if (!PC) return;
 
-	// Owner‚É‚µ‚Ä‚¢‚½Character‚ğæ“¾
+	// Ownerã«ã—ã¦ã„ãŸCharacterã‚’å–å¾—
 	AMyCharacter* Character = Cast<AMyCharacter>(GetOwner());
 	if (!Character) return;
 
-	// ~‚è‚éˆÊ’u‚ğŒˆ’è
+	// é™ã‚Šã‚‹ä½ç½®ã‚’æ±ºå®š
 	FVector ExitLoc = GetActorLocation() + GetActorRightVector() * 200.0f;
 	Character->SetActorLocation(ExitLoc);
 	Character->SetActorEnableCollision(true);
 
-	// Š—LŒ E‘€ì‚ğ–ß‚·
+	// æ‰€æœ‰æ¨©ãƒ»æ“ä½œã‚’æˆ»ã™
 	PC->UnPossess();
 	PC->Possess(Character);
 
@@ -174,7 +210,7 @@ void ABoatPawn::ExitBoat(const FInputActionValue& Value)
 	Character->CurrentBoat = nullptr;
 	bHasDriver = false;
 
-	// ƒJƒƒ‰‚ğ–ß‚·
+	// ã‚«ãƒ¡ãƒ©ã‚’æˆ»ã™
 	PC->SetViewTargetWithBlend(Character, 0.5f, EViewTargetBlendFunction::VTBlend_Cubic);
 
 
@@ -183,14 +219,16 @@ void ABoatPawn::ExitBoat(const FInputActionValue& Value)
 void ABoatPawn::ApplyBuoyancy()
 {
 	FVector BoatLocation = BoatMesh->GetComponentLocation();
-	float WaterHeight = 0.0f;//ŠC–ÊYÀ•W
+	float WaterHeight = 0.0f;//æµ·é¢Yåº§æ¨™
 	float Depth = WaterHeight - BoatLocation.Z;
 
 	if (Depth > 0)
 	{
+		// æ·±ã•ã«æ¯”ä¾‹ã—ãŸæµ®åŠ›ã‚’åŠ ãˆã‚‹
 		FVector UpFroce = FVector(0.0f, 0.0f, Depth * BuoyancyForce);
 		BoatMesh->AddForce(UpFroce);
 
+		// æ°´ã®ç²˜æ€§æŠµæŠ—
 		FVector Velocity = BoatMesh->GetPhysicsLinearVelocity();
 		FVector Drag = -Velocity * WaterDrag;
 		BoatMesh->AddForce(Drag);
