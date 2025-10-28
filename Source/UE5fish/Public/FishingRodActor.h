@@ -1,5 +1,4 @@
 // Fill out your copyright notice in the Description page of Project Settings.
-
 #pragma once
 
 #include "CoreMinimal.h"
@@ -9,60 +8,36 @@
 UCLASS()
 class UE5FISH_API AFishingRodActor : public AActor
 {
-	GENERATED_BODY()
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Fishing, meta = (AllowPrivateAccess = "true"))
-	UStaticMeshComponent* RodMesh;
+    GENERATED_BODY()
 
 public:
-	AFishingRodActor();
+    AFishingRodActor();
 
-	// 釣り状態
-	bool bFishBiting = false;
+    /** メッシュ */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Components")
+    USkeletalMeshComponent* RodMesh;
 
-protected:
-	virtual void BeginPlay() override;
-	virtual void Tick(float DeltaTime) override;
+    /** 魚が掛かっているか */
+    UPROPERTY(BlueprintReadWrite, Category = "Fishing")
+    bool bFishBiting = false;
 
-	
+    /** 釣り開始 */
+    void StartFishing();
+    void BeginChargeCast();
+    void ReleaseCast();
+    void ReelIn();
+    void AdjustRodPitch(float Axis);
 
-	// 糸テンション
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Fishing")
-	float RodTension = 50.0f;
 
-	UPROPERTY(EditAnywhere, Category = "Fishing")
-	float RodMin = 10.0f;
+    /** 左右操作 */
+    void InputHorizontal(float Value);
 
-	UPROPERTY(EditAnywhere, Category = "Fishing")
-	float RodMax = 90.0f;
+    float CastCharge = 0.f;
+    bool bIsCharging = false;
+    bool bLineInWater = false;
 
-	// プレイヤー入力
-	float RodInput = 0.0f;
-	UPROPERTY(EditAnywhere, Category = "Fishing")
-	float RodInputSpeed = 40.0f;
+    virtual void Tick(float DeltaTime) override;
 
-	// 魚の引き
-	UPROPERTY(EditAnywhere, Category = "Fishing")
-	float FishStrength = 20.0f;
-
-	// 成功判定
-	float CatchTime = 0.0f;
-	UPROPERTY(EditAnywhere, Category = "Fishing")
-	float MaxCatchTime = 5.0f;
-
-	FTimerHandle BiteTimerHandle;
-
-	void FishBite();
-	void EndBite();
-
-public:
-	// プレイヤー入力
-	void InputVertical(float Value); // W/S入力
-
-	// 釣り開始
-	void StartFishing();
-
-	// 魚ゲット判定
-	void ReelAttempt();
-
+    /** メッシュ取得用関数 */
+    FORCEINLINE USkeletalMeshComponent* GetMesh() const { return RodMesh; }
 };

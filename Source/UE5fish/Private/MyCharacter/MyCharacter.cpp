@@ -1,214 +1,227 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
-
-
-#include "MyCharacter/MyCharacter.h"
-#include "Engine/LocalPlayer.h"
+﻿#include "MyCharacter/MyCharacter.h"
 #include "Camera/CameraComponent.h"
-#include "Components/CapsuleComponent.h"
-#include "Components/SceneComponent.h"
-#include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
-#include "GameFramework/Controller.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "InputActionValue.h"
-#include "Kismet/GameplayStatics.h"
+#include "FishingRodActor.h"
 #include "BoatPawn.h"
+#include "Kismet/GameplayStatics.h"
+#include "GameFramework/PlayerController.h"
+#include "Components/SkeletalMeshComponent.h"
 
-// Sets default values
+//////////////////////////////////////////////////////////////////////////
+// AMyCharacter
+
 AMyCharacter::AMyCharacter()
 {
- 	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
-	// Set size for collision capsule
-	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.0f);
-
-	// Don't rotate when the controller rotates. Let that just affect the camera.
-	bUseControllerRotationPitch = false;
-	bUseControllerRotationYaw = false;
-	bUseControllerRotationRoll = false;
-
-	// Configure character movement
-	GetCharacterMovement()->bOrientRotationToMovement = true; // Character moves in the direction of input...	
-	GetCharacterMovement()->RotationRate = FRotator(0.0f, 500.0f, 0.0f); // ...at this rotation rate
-
-	// Note: For faster iteration times these variables, and many more, can be tweaked in the Character Blueprint
-	// instead of recompiling to adjust them
-	GetCharacterMovement()->JumpZVelocity = 700.f;
-	GetCharacterMovement()->AirControl = 0.35f;
-	GetCharacterMovement()->MaxWalkSpeed = 500.f;
-	GetCharacterMovement()->MinAnalogWalkSpeed = 20.f;
-	GetCharacterMovement()->BrakingDecelerationWalking = 2000.f;
-	GetCharacterMovement()->BrakingDecelerationFalling = 1500.0f;
-
-	// Create a camera boom (pulls in towards the player if there is a collision)
+	// カメラブーム（キャラクターの背後にカメラを保持）
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
 	CameraBoom->SetupAttachment(RootComponent);
-	CameraBoom->TargetArmLength = 400.0f; // The camera follows at this distance behind the character	
-	CameraBoom->bUsePawnControlRotation = true; // Rotate the arm based on the controller
+	CameraBoom->TargetArmLength = 300.0f;
+	CameraBoom->bUsePawnControlRotation = true;
 
-
-	// Create a follow camera
+	// カメラ本体
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
-	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName); // Attach the camera to the end of the boom and let the boom adjust to match the controller orientation
-	FollowCamera->bUsePawnControlRotation = false; // Camera does not rotate relative to arm
+	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
+	FollowCamera->bUsePawnControlRotation = false;
 
+	// 移動はプレイヤーの向きを変える
+	bUseControllerRotationYaw = false;
+	GetCharacterMovement()->bOrientRotationToMovement = true;
+}
+
+void AMyCharacter::BeginPlay()
+{
+	Super::BeginPlay();
+
+	if (APlayerController* PC = Cast<APlayerController>(Controller))
+	{
+		if (UEnhancedInputLocalPlayerSubsystem* Subsystem =
+			ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PC->GetLocalPlayer()))
+		{
+			if (DefaultMappingContext)
+			{
+				Subsystem->AddMappingContext(DefaultMappingContext, 0);
+			}
+		}
+	}
+
+	// 釣り竿のスポーン
+	if (FishingRodClass)
+	{
+		FActorSpawnParameters SpawnParams;
+		SpawnParams.Owner = this;
+		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+		FishingRod = GetWorld()->SpawnActor<AFishingRodActor>(FishingRodClass, SpawnParams);
+		if (FishingRod)
+		{
+			// ソケット名 "RodSocket" にアタッチ（メッシュに設定済み）
+			FishingRod->AttachToComponent(GetMesh(),
+				FAttachmentTransformRules::SnapToTargetNotIncludingScale,
+				FName("RodSocket"));
+			FishingRod->SetActorHiddenInGame(true);
+		}
+	}
+}
+
+//////////////////////////////////////////////////////////////////////////
+// 入力処理
+
+void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
+{
+	Super::SetupPlayerInputComponent(PlayerInputComponent);
+
+	if (UEnhancedInputComponent* EnhancedInput = CastChecked<UEnhancedInputComponent>(PlayerInputComponent))
+	{
+		if (MoveAction) EnhancedInput->BindAction(MoveAction, ETriggerEvent::Triggered, this, &AMyCharacter::Move);
+		if (LookAction) EnhancedInput->BindAction(LookAction, ETriggerEvent::Triggered, this, &AMyCharacter::Look);
+		if (BoatInteractAction) EnhancedInput->BindAction(BoatInteractAction, ETriggerEvent::Triggered, this, &AMyCharacter::InteractWithBoat);
+		if (FishingAction) EnhancedInput->BindAction(FishingAction, ETriggerEvent::Triggered, this, &AMyCharacter::ToggleEquipRod);
+		if (FishingMoveAction) EnhancedInput->BindAction(FishingMoveAction, ETriggerEvent::Triggered, this, &AMyCharacter::MoveFishingRod);
+		if (CastLineAction) EnhancedInput->BindAction(CastLineAction, ETriggerEvent::Started, this, &AMyCharacter::StartCasting);
+		if (CastLineAction) EnhancedInput->BindAction(CastLineAction, ETriggerEvent::Completed, this, &AMyCharacter::ReleaseCasting);
+		if (ReelInAction) EnhancedInput->BindAction(ReelInAction, ETriggerEvent::Triggered, this, &AMyCharacter::ReelInLine);
+		if (RodUpDownAction) EnhancedInput->BindAction(RodUpDownAction, ETriggerEvent::Triggered, this, &AMyCharacter::MoveRodUpDown);
+	}
+}
+
+//////////////////////////////////////////////////////////////////////////
+// 移動処理
+
+void AMyCharacter::Move(const FInputActionValue& Value)
+{
+	if (bIsFishing) return; // 釣り中は移動禁止
+
+	const FVector2D MovementVector = Value.Get<FVector2D>();
+	if (Controller != nullptr)
+	{
+		const FRotator Rotation = Controller->GetControlRotation();
+		const FRotator YawRotation(0, Rotation.Yaw, 0);
+
+		const FVector ForwardDir = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
+		const FVector RightDir = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
+
+		AddMovementInput(ForwardDir, MovementVector.Y);
+		AddMovementInput(RightDir, MovementVector.X);
+	}
+}
+
+void AMyCharacter::Look(const FInputActionValue& Value)
+{
+	const FVector2D LookAxisVector = Value.Get<FVector2D>();
+	AddControllerYawInput(LookAxisVector.X);
+	AddControllerPitchInput(LookAxisVector.Y);
+}
+
+//////////////////////////////////////////////////////////////////////////
+// ボート関連（オプション）
+
+void AMyCharacter::InteractWithBoat(const FInputActionValue& Value)
+{
+	if (CurrentBoat && !bIsInBoat)
+	{
+		AttachToActor(CurrentBoat, FAttachmentTransformRules::KeepWorldTransform);
+		bIsInBoat = true;
+	}
+	else if (bIsInBoat)
+	{
+		DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
+		bIsInBoat = false;
+	}
+}
+
+//////////////////////////////////////////////////////////////////////////
+// 釣り関連
+
+void AMyCharacter::ToggleEquipRod(const FInputActionValue& Value)
+{
+	bRodEquipped = !bRodEquipped;
+	ToggleFishingRod(bRodEquipped);
+}
+
+void AMyCharacter::ToggleFishingRod(bool bEquip)
+{
+	if (!FishingRod) return;
+
+	FishingRod->SetActorHiddenInGame(!bEquip);
+
+	if (bEquip)
+	{
+		bIsFishing = true;
+
+		// 🎣 カメラを右後ろにズラす
+		CameraBoom->TargetArmLength = 350.0f;
+		CameraBoom->SocketOffset = FVector(-50.f, 70.f, 20.f);
+	}
+	else
+	{
+		bIsFishing = false;
+
+		// 通常カメラ位置に戻す
+		CameraBoom->TargetArmLength = 300.0f;
+		CameraBoom->SocketOffset = FVector::ZeroVector;
+	}
+}
+
+// Cast 開始（クリック押し）
+void AMyCharacter::StartCasting(const FInputActionValue& Value)
+{
+	if (!FishingRod || !bRodEquipped) return;
+	FishingRod->BeginChargeCast();  // 投げ距離チャージ開始
+}
+
+// Cast 完了（クリック離す）
+void AMyCharacter::ReleaseCasting(const FInputActionValue& Value)
+{
+	if (!FishingRod || !bRodEquipped) return;
+	FishingRod->ReleaseCast();  // 投げる
+}
+
+// 巻き取り
+void AMyCharacter::ReelInLine(const FInputActionValue& Value)
+{
+	if (!FishingRod || !bRodEquipped) return;
+	FishingRod->ReelIn();  // 糸を引く
+}
+
+// 上下操作
+void AMyCharacter::MoveRodUpDown(const FInputActionValue& Value)
+{
+	if (!FishingRod || !bRodEquipped) return;
+
+	float Axis = Value.Get<float>();
+	FishingRod->AdjustRodPitch(Axis);
+}
+
+void AMyCharacter::MoveFishingRod(const FInputActionValue& Value)
+{
+	if (!bIsFishing || !FishingRod) return;
+
+	const float MoveValue = Value.Get<float>();
+	FVector NewLoc = FishingRod->GetActorLocation();
+	NewLoc += GetActorRightVector() * MoveValue * 10.0f;
+	FishingRod->SetActorLocation(NewLoc);
 }
 
 void AMyCharacter::NotifyControllerChanged()
 {
 	Super::NotifyControllerChanged();
 
-	if (APlayerController* PlayerController = Cast<APlayerController>(Controller))
+	if (APlayerController* PC = Cast<APlayerController>(Controller))
 	{
-		if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PlayerController->GetLocalPlayer()))
+		if (UEnhancedInputLocalPlayerSubsystem* Subsystem =
+			ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PC->GetLocalPlayer()))
 		{
-			Subsystem->AddMappingContext(DefaultMappingContext, 0);
-		}
-	}
-}
-
-// Called when the game starts or when spawned
-void AMyCharacter::BeginPlay()
-{
-	Super::BeginPlay();
-
-	if (FishingRodClass)
-	{
-		FishingRod = GetWorld()->SpawnActor<AFishingRodActor>(FishingRodClass);
-	}
-}
-
-// Called every frame
-//void AMyCharacter::Tick(float DeltaTime)
-//{
-//	Super::Tick(DeltaTime);
-//
-//}
-
-// Called to bind functionality to input
-void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
-{
-	Super::SetupPlayerInputComponent(PlayerInputComponent);
-	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent)) {
-
-		// Jumping
-		//EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started, this, &ACharacter::Jump);
-		//EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
-
-		// Moving
-		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &AMyCharacter::Move);
-
-		// Looking
-		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &AMyCharacter::Look);
-
-		//Interact
-		EnhancedInputComponent->BindAction(InteractAction, ETriggerEvent::Triggered, this, &AMyCharacter::Interact);
-
-		EnhancedInputComponent->BindAction(FishingAction, ETriggerEvent::Started, this, &AMyCharacter::StartFishing);
-		//Exit
-		//EnhancedInputComponent->BindAction(ExitBoatAction, ETriggerEvent::Triggered, this, &AMyCharacter::ExitBoat);
-
-	}
-	
-}
-
-void AMyCharacter::Move(const FInputActionValue& Value)
-{
-	// input is a Vector2D
-	FVector2D MovementVector = Value.Get<FVector2D>();
-
-	if (Controller != nullptr)
-	{
-		// find out which way is forward
-		const FRotator Rotation = Controller->GetControlRotation();
-		const FRotator YawRotation(0, Rotation.Yaw, 0);
-
-		// get forward vector
-		const FVector ForwardDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
-
-		// get right vector 
-		const FVector RightDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
-
-		// add movement 
-		AddMovementInput(ForwardDirection, MovementVector.Y);
-		AddMovementInput(RightDirection, MovementVector.X);
-	}
-}
-
-void AMyCharacter::Look(const FInputActionValue& Value)
-{
-	// input is a Vector2D
-	FVector2D LookAxisVector = Value.Get<FVector2D>();
-
-	if (Controller != nullptr)
-	{
-		// add yaw and pitch input to controller
-		AddControllerYawInput(LookAxisVector.X);
-		AddControllerPitchInput(LookAxisVector.Y);
-	}
-}
-
-void AMyCharacter::Interact(const FInputActionValue& Value)
-{
-	FVector MyLoc = GetActorLocation();
-
-	// 近くのボートを探す
-	TArray<AActor*> FoundBoats;
-	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ABoatPawn::StaticClass(), FoundBoats);
-
-	for (AActor* Boat : FoundBoats)
-	{
-		float Dist = FVector::Dist(MyLoc, Boat->GetActorLocation());
-		if (Dist < 300.0f)
-		{
-			ABoatPawn* BoatPawn = Cast<ABoatPawn>(Boat);
-			if (BoatPawn && !BoatPawn->bHasDriver)
+			Subsystem->ClearAllMappings();
+			if (DefaultMappingContext)
 			{
-				APlayerController* PC = Cast<APlayerController>(GetController());
-				if (PC)
-				{
-					PC->Possess(BoatPawn);
-					BoatPawn->bHasDriver = true;
-					BoatPawn->SetOwner(this);
-					CurrentBoat = BoatPawn;
-					bIsInBoat = true;
-
-					// キャラを座席にアタッチ（運転席）
-					AttachToComponent(BoatPawn->SeatPosition, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
-					SetActorHiddenInGame(false);
-					SetActorEnableCollision(false);
-
-					if (BoatPawn->BoatCamera)
-					{
-						PC->SetViewTargetWithBlend(BoatPawn, 0.5f, EViewTargetBlendFunction::VTBlend_Cubic);
-					}
-					
-				}
-				break;
+				Subsystem->AddMappingContext(DefaultMappingContext, 0);
 			}
 		}
 	}
-}
-
-void AMyCharacter::StartFishing(const FInputActionValue& Value)
-{
-	// 釣り竿が存在しない
-	if (!FishingRod)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("🎣 釣り竿が設定されていません！"));
-		return;
-	}
-
-	// すでに魚が掛かっているときは無視
-	if (FishingRod->bFishBiting)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("🐟 すでに魚が掛かっています！"));
-		return;
-	}
-
-	// 釣り開始
-	FishingRod->StartFishing();
-	UE_LOG(LogTemp, Log, TEXT("🎣 釣りアクション開始"));
 }

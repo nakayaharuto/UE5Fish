@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
-#include "FishingRodActor.h"
+#include "InputActionValue.h"
 #include "MyCharacter.generated.h"
 
 
@@ -13,12 +13,14 @@ class UCameraComponent;
 class UInputMappingContext;
 class UInputAction;
 struct FInputActionValue;
+class AFishingRodActor;
 
 
 UCLASS()
 class UE5FISH_API AMyCharacter : public ACharacter
 {
 	GENERATED_BODY()
+public:
 	//カメラの位置
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	USpringArmComponent* CameraBoom;
@@ -41,38 +43,67 @@ class UE5FISH_API AMyCharacter : public ACharacter
 
 	//インタラクト
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
-	UInputAction* InteractAction;
+	UInputAction* BoatInteractAction;
 
 	//釣り竿
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Fishing, meta = (AllowPrivateAccess = "true"))
 	AFishingRodActor* FishingRod;
 
+	//アクション
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* FishingAction;
 
+	//竿アクション
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Fishing, meta = (AllowPrivateAccess = "true"))
 	TSubclassOf<class AFishingRodActor> FishingRodClass;
-
-	/*Exit
+	
+	//左右へのアクション
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
-	UInputAction* ExitBoatAction;*/
+	UInputAction* FishingMoveAction;
+
+	// 新アクション
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
+	UInputAction* CastLineAction;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
+	UInputAction* ReelInAction;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
+	UInputAction* RodUpDownAction;
+	
 public:
 	// Sets default values for this character's properties
 	AMyCharacter();
+	virtual void BeginPlay() override;
 
 protected:
 	// Called when the game starts or when spawned
-	virtual void BeginPlay() override;
 
+
+	/// <summary>
+	/// 入力
+	/// </summary>
+	/// <param name="Value"></param>
 	void Move(const FInputActionValue& Value);
-
 	void Look(const FInputActionValue& Value);
+	void InteractWithBoat(const FInputActionValue& Value);
+	void ToggleEquipRod(const FInputActionValue& Value);
+	void MoveFishingRod(const FInputActionValue& Value);
+	void StartCasting(const FInputActionValue& Value);
+	void ReleaseCasting(const FInputActionValue& Value);
+	void ReelInLine(const FInputActionValue& Value);
+	void MoveRodUpDown(const FInputActionValue& Value);
+	//void StopFishing();
+	//void StartFishing(const FInputActionValue& Value);
 
-	void Interact(const FInputActionValue& Value);
+	/** 釣り竿の装備／収納切り替え */
+	void ToggleFishingRod(bool bEquip);
 
-	void StartFishing(const FInputActionValue& Value);
-	
-	//void ExitBoat(const FInputActionValue& Value);
+	/** 釣り竿装備状態 */
+	bool bRodEquipped = false;
+
+	/** 釣り中かどうか */
+	bool bIsFishing = false;
 
 public:	
 	// Called every frame
