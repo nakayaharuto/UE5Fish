@@ -10,15 +10,21 @@ UCLASS()
 class UE5FISH_API AFishingRodActor : public AActor
 {
 	GENERATED_BODY()
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Fishing, meta = (AllowPrivateAccess = "true"))
+	UStaticMeshComponent* RodMesh;
+
 public:
 	AFishingRodActor();
+
+	// ’Ş‚èó‘Ô
+	bool bFishBiting = false;
 
 protected:
 	virtual void BeginPlay() override;
 	virtual void Tick(float DeltaTime) override;
 
-	// ’Ş‚èó‘Ô
-	bool bFishBiting = false;
+	
 
 	// …ƒeƒ“ƒVƒ‡ƒ“
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Fishing")

@@ -35,6 +35,9 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Boat|Physics");
 	float WaterDrag = 0.3;
 
+	UPROPERTY(EditAnywhere, Category = "Boat|Physics");
+	float WaterHeight = 0.0f;
+
 	//ÉJÉÅÉâÇÃà íu
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	USpringArmComponent* CameraBoom;

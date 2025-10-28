@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "MyCharacter/MyCharacter.h"
@@ -73,7 +73,11 @@ void AMyCharacter::NotifyControllerChanged()
 void AMyCharacter::BeginPlay()
 {
 	Super::BeginPlay();
-	
+
+	if (FishingRodClass)
+	{
+		FishingRod = GetWorld()->SpawnActor<AFishingRodActor>(FishingRodClass);
+	}
 }
 
 // Called every frame
@@ -102,6 +106,7 @@ void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 		//Interact
 		EnhancedInputComponent->BindAction(InteractAction, ETriggerEvent::Triggered, this, &AMyCharacter::Interact);
 
+		EnhancedInputComponent->BindAction(FishingAction, ETriggerEvent::Started, this, &AMyCharacter::StartFishing);
 		//Exit
 		//EnhancedInputComponent->BindAction(ExitBoatAction, ETriggerEvent::Triggered, this, &AMyCharacter::ExitBoat);
 
@@ -149,7 +154,7 @@ void AMyCharacter::Interact(const FInputActionValue& Value)
 {
 	FVector MyLoc = GetActorLocation();
 
-	// �߂��̃{�[�g��T��
+	// 近くのボートを探す
 	TArray<AActor*> FoundBoats;
 	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ABoatPawn::StaticClass(), FoundBoats);
 
@@ -170,7 +175,7 @@ void AMyCharacter::Interact(const FInputActionValue& Value)
 					CurrentBoat = BoatPawn;
 					bIsInBoat = true;
 
-					// �L���������ȂɃA�^�b�`�i�^�]�ȁj
+					// キャラを座席にアタッチ（運転席）
 					AttachToComponent(BoatPawn->SeatPosition, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
 					SetActorHiddenInGame(false);
 					SetActorEnableCollision(false);
@@ -187,24 +192,23 @@ void AMyCharacter::Interact(const FInputActionValue& Value)
 	}
 }
 
-//void AMyCharacter::ExitBoat(const FInputActionValue& Value)
-//{
-//	if (!bIsInBoat || !CurrentBoat) return;
-//
-//	APlayerController* PC = Cast<APlayerController>(CurrentBoat->GetController());
-//	if (PC)
-//	{
-//		CurrentBoat->bHasDriver = false;
-//		DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
-//
-//		FVector ExitLoc = CurrentBoat->GetActorLocation() + CurrentBoat->GetActorRightVector() * 200.0f;
-//		SetActorLocation(ExitLoc);
-//		SetActorEnableCollision(true);
-//
-//		PC->UnPossess();
-//		PC->Possess(this);
-//
-//		bIsInBoat = false;
-//		CurrentBoat = nullptr;
-//	}
-//}
+void AMyCharacter::StartFishing(const FInputActionValue& Value)
+{
+	// 釣り竿が存在しない
+	if (!FishingRod)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("🎣 釣り竿が設定されていません！"));
+		return;
+	}
+
+	// すでに魚が掛かっているときは無視
+	if (FishingRod->bFishBiting)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("🐟 すでに魚が掛かっています！"));
+		return;
+	}
+
+	// 釣り開始
+	FishingRod->StartFishing();
+	UE_LOG(LogTemp, Log, TEXT("🎣 釣りアクション開始"));
+}

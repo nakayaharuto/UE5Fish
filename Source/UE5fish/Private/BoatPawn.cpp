@@ -57,7 +57,13 @@ ABoatPawn::ABoatPawn()
 void ABoatPawn::BeginPlay()
 {
 	Super::BeginPlay();
-	
+	BoatMesh->SetSimulatePhysics(true);
+	BoatMesh->SetMobility(EComponentMobility::Movable);
+	BoatMesh->SetMassOverrideInKg(NAME_None, 200.0f); // 船を軽くする
+
+	BuoyancyForce = 550.0f;  // 浮力係数（要調整）
+	WaterDrag = 3.0f;      // 水抵抗（速度減衰）
+	WaterHeight = 200.0f;      // 海面のZ座標
 }
 
 void ABoatPawn::NotifyControllerChanged()
@@ -189,37 +195,60 @@ void ABoatPawn::ExitBoat(const FInputActionValue& Value)
 {
 	if (!bHasDriver) return;
 
-	// プレイヤーコントローラを取得
 	APlayerController* PC = Cast<APlayerController>(GetController());
 	if (!PC) return;
 
-	// OwnerにしていたCharacterを取得
 	AMyCharacter* Character = Cast<AMyCharacter>(GetOwner());
 	if (!Character) return;
 
-	// 降りる位置を決定
+	// --- 子アクターから分離 ---
+	Character->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
+
+	// --- 降りる位置を決定 ---
 	FVector ExitLoc = GetActorLocation() + GetActorRightVector() * 200.0f;
+	FHitResult Hit;
+	FVector Start = ExitLoc + FVector(0, 0, 100.0f);
+	FVector End = ExitLoc - FVector(0, 0, 500.0f);
+	FCollisionQueryParams Params;
+	Params.AddIgnoredActor(this);
+	Params.AddIgnoredActor(Character);
+
+	bool bHit = GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility, Params);
+
+	if (bHit)
+	{
+		// 地面の上
+		ExitLoc = Hit.Location;
+	}
+	else
+	{
+		// 海上の場合 → デッキ上
+		ExitLoc = GetActorLocation() + FVector(0, 0, 120.0f);
+	}
+
+	// --- キャラ位置を移動 ---
 	Character->SetActorLocation(ExitLoc);
 	Character->SetActorEnableCollision(true);
 
-	// 所有権・操作を戻す
+	// --- 操作権を戻す ---
 	PC->UnPossess();
 	PC->Possess(Character);
 
-	Character->bIsInBoat = false;
-	Character->CurrentBoat = nullptr;
+	// --- 船とのリンク解除 ---
+	SetOwner(nullptr);
 	bHasDriver = false;
 
-	// カメラを戻す
+	// --- キャラの状態更新 ---
+	Character->bIsInBoat = false;
+	Character->CurrentBoat = nullptr;
+
+	// --- カメラを戻す ---
 	PC->SetViewTargetWithBlend(Character, 0.5f, EViewTargetBlendFunction::VTBlend_Cubic);
-
-
 }
 
 void ABoatPawn::ApplyBuoyancy()
 {
 	FVector BoatLocation = BoatMesh->GetComponentLocation();
-	float WaterHeight = 0.0f;//海面Y座標
 	float Depth = WaterHeight - BoatLocation.Z;
 
 	if (Depth > 0)

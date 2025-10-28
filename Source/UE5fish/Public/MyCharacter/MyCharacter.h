@@ -4,7 +4,9 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "FishingRodActor.h"
 #include "MyCharacter.generated.h"
+
 
 class USpringArmComponent;
 class UCameraComponent;
@@ -41,6 +43,16 @@ class UE5FISH_API AMyCharacter : public ACharacter
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* InteractAction;
 
+	//’Þ‚èŠÆ
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Fishing, meta = (AllowPrivateAccess = "true"))
+	AFishingRodActor* FishingRod;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	UInputAction* FishingAction;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Fishing, meta = (AllowPrivateAccess = "true"))
+	TSubclassOf<class AFishingRodActor> FishingRodClass;
+
 	/*Exit
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* ExitBoatAction;*/
@@ -57,6 +69,8 @@ protected:
 	void Look(const FInputActionValue& Value);
 
 	void Interact(const FInputActionValue& Value);
+
+	void StartFishing(const FInputActionValue& Value);
 	
 	//void ExitBoat(const FInputActionValue& Value);
 
