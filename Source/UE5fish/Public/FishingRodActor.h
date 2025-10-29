@@ -1,9 +1,20 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "FishingRodActor.generated.h"
+
+UENUM(BlueprintType)
+enum class EFishingState : uint8
+{
+    Idle,
+    Casting,
+    Waiting,
+    Hooked,
+    Reeling,
+    Success,
+    Fail
+};
 
 UCLASS()
 class UE5FISH_API AFishingRodActor : public AActor
@@ -13,31 +24,66 @@ class UE5FISH_API AFishingRodActor : public AActor
 public:
     AFishingRodActor();
 
-    /** ���b�V�� */
+    virtual void Tick(float DeltaTime) override;
+
+    /** メッシュ */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Components")
     USkeletalMeshComponent* RodMesh;
 
-    /** �����|�����Ă��邩 */
-    UPROPERTY(BlueprintReadWrite, Category = "Fishing")
-    bool bFishBiting = false;
+    /** 現在の釣り状態 */
+    UPROPERTY(BlueprintReadOnly, Category = "Fishing")
+    EFishingState CurrentState = EFishingState::Idle;
 
-    /** �ނ�J�n */
-    void StartFishing();
+    /** 糸テンション (0〜100) */
+    UPROPERTY(BlueprintReadOnly, Category = "Fishing")
+    float LineTension = 0.f;
+
+    /** 魚の進行度 (0〜100) */
+    UPROPERTY(BlueprintReadOnly, Category = "Fishing")
+    float FishProgress = 0.f;
+
+    /** 投げ距離チャージ */
     void BeginChargeCast();
     void ReleaseCast();
-    void ReelIn();
+
+    /** リール操作 */
+    UFUNCTION(BlueprintCallable, Category = "Fishing")
+    void StartReel();
+
+    UFUNCTION(BlueprintCallable, Category = "Fishing")
+    void StopReel();
+
+    /** ロッド角度調整 */
     void AdjustRodPitch(float Axis);
+    void AdjustRodYaw(float Axis);
 
+    /** フィッシング開始 */
+    void StartFishing();
 
-    /** ���E���� */
-    void InputHorizontal(float Value);
+    /** 線テンション・進行度操作関数 */
+    void AdjustTension(float Delta);
+    void AddFishProgress(float Delta);
 
-    float CastCharge = 0.f;
+    /** リセット */
+    void ResetFishingState();
+
+private:
     bool bIsCharging = false;
     bool bLineInWater = false;
+    bool bIsReeling = false;
+    float CastCharge = 0.f;
 
-    virtual void Tick(float DeltaTime) override;
+    float RodPitch = 10.f;
+    float RodYaw = 0.f;
 
-    /** ���b�V���擾�p�֐� */
-    FORCEINLINE USkeletalMeshComponent* GetMesh() const { return RodMesh; }
+    FTimerHandle BiteTimerHandle;
+    FTimerHandle FishBiteTimer;
+
+    float FishForce = 0.f;
+    float ReelSpeed = 0.f;
+
+    float StableTime = 0.f; // 釣り成功判定用
+
+    void FishBite();
+    void UpdateReeling(float DeltaTime);
 };

@@ -70,11 +70,23 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
 	UInputAction* RodUpDownAction;
-	
+
+	UPROPERTY(BlueprintReadWrite, Category = "Fishing")
+	bool bFishOnLine = false; // 魚がかかっているか
+
+	UPROPERTY(BlueprintReadWrite, Category = "Fishing")
+	bool bReeling = false; // 巻いているか
+
+	// 現在のテンション（糸の張り）
+	UPROPERTY(BlueprintReadWrite, Category = "Fishing")
+	float LineTension = 0.f;
+
 public:
 	// Sets default values for this character's properties
 	AMyCharacter();
 	virtual void BeginPlay() override;
+
+	virtual void Tick(float DeltaTime) override;
 
 protected:
 	// Called when the game starts or when spawned

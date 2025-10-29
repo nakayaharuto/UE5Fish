@@ -69,6 +69,33 @@ void AMyCharacter::BeginPlay()
 	}
 }
 
+void AMyCharacter::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+
+	if (bFishOnLine && FishingRod)
+	{
+		// 糸のテンションを上下操作で調整する
+		LineTension = FMath::Clamp(LineTension + FishingRod->LineTension, 0.f, 100.f);
+
+		// 張りすぎると切れる
+		if (LineTension >= 100.f)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Line broke! Fish escaped!"));
+			bFishOnLine = false;
+			FishingRod->ResetFishingState();
+		}
+
+		// 緩みすぎると逃げる
+		if (LineTension <= 5.f)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Line too loose! Fish got away."));
+			bFishOnLine = false;
+			FishingRod->ResetFishingState();
+		}
+	}
+}
+
 //////////////////////////////////////////////////////////////////////////
 // 入力処理
 
@@ -186,7 +213,38 @@ void AMyCharacter::ReleaseCasting(const FInputActionValue& Value)
 void AMyCharacter::ReelInLine(const FInputActionValue& Value)
 {
 	if (!FishingRod || !bRodEquipped) return;
-	FishingRod->ReelIn();  // 糸を引く
+
+	// 魚がかかっている場合
+	if (bFishOnLine)
+	{
+		bReeling = true;
+
+		// AFishingRodActor 側の関数でテンション調整
+		FishingRod->AdjustTension(20.f * GetWorld()->GetDeltaSeconds());
+
+		// テンションが安定しているかチェック
+		float Tension = FishingRod->LineTension;
+		if (Tension > 40.f && Tension < 70.f)
+		{
+			// AFishingRodActor 側の関数で魚進行度を増加
+			FishingRod->AddFishProgress(GetWorld()->GetDeltaSeconds() * 10.f);
+
+			if (FishingRod->FishProgress >= 100.f)
+			{
+				UE_LOG(LogTemp, Log, TEXT("🎣 Fish caught!"));
+				bFishOnLine = false;
+				bReeling = false;
+
+				// 釣り竿をリセット
+				FishingRod->ResetFishingState();
+			}
+		}
+	}
+	else
+	{
+		// 魚がかかっていない場合は通常リール巻き
+		FishingRod->StartReel();
+	}
 }
 
 // 上下操作
