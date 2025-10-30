@@ -73,27 +73,7 @@ void AMyCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	if (bFishOnLine && FishingRod)
-	{
-		// 糸のテンションを上下操作で調整する
-		LineTension = FMath::Clamp(LineTension + FishingRod->LineTension, 0.f, 100.f);
-
-		// 張りすぎると切れる
-		if (LineTension >= 100.f)
-		{
-			UE_LOG(LogTemp, Warning, TEXT("Line broke! Fish escaped!"));
-			bFishOnLine = false;
-			FishingRod->ResetFishingState();
-		}
-
-		// 緩みすぎると逃げる
-		if (LineTension <= 5.f)
-		{
-			UE_LOG(LogTemp, Warning, TEXT("Line too loose! Fish got away."));
-			bFishOnLine = false;
-			FishingRod->ResetFishingState();
-		}
-	}
+	
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -109,11 +89,11 @@ void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 		if (LookAction) EnhancedInput->BindAction(LookAction, ETriggerEvent::Triggered, this, &AMyCharacter::Look);
 		if (BoatInteractAction) EnhancedInput->BindAction(BoatInteractAction, ETriggerEvent::Triggered, this, &AMyCharacter::InteractWithBoat);
 		if (FishingAction) EnhancedInput->BindAction(FishingAction, ETriggerEvent::Triggered, this, &AMyCharacter::ToggleEquipRod);
-		if (FishingMoveAction) EnhancedInput->BindAction(FishingMoveAction, ETriggerEvent::Triggered, this, &AMyCharacter::MoveFishingRod);
-		if (CastLineAction) EnhancedInput->BindAction(CastLineAction, ETriggerEvent::Started, this, &AMyCharacter::StartCasting);
-		if (CastLineAction) EnhancedInput->BindAction(CastLineAction, ETriggerEvent::Completed, this, &AMyCharacter::ReleaseCasting);
-		if (ReelInAction) EnhancedInput->BindAction(ReelInAction, ETriggerEvent::Triggered, this, &AMyCharacter::ReelInLine);
-		if (RodUpDownAction) EnhancedInput->BindAction(RodUpDownAction, ETriggerEvent::Triggered, this, &AMyCharacter::MoveRodUpDown);
+		if (StartCasting) EnhancedInput->BindAction(StartCasting, ETriggerEvent::Triggered, this, &AMyCharacter::StartCastingInput);
+		if (ReleaseCasting) EnhancedInput->BindAction(ReleaseCasting, ETriggerEvent::Started, this, &AMyCharacter::ReleaseCastingInput);
+		if (StartReel) EnhancedInput->BindAction(StartReel, ETriggerEvent::Completed, this, &AMyCharacter::StartReelInput);
+		if (StopReel) EnhancedInput->BindAction(StopReel, ETriggerEvent::Triggered, this, &AMyCharacter::StopReelInput);
+		//if (RodUpDownAction) EnhancedInput->BindAction(RodUpDownAction, ETriggerEvent::Triggered, this, &AMyCharacter::MoveRodUpDown);
 	}
 }
 
@@ -195,91 +175,26 @@ void AMyCharacter::ToggleFishingRod(bool bEquip)
 	}
 }
 
-// Cast 開始（クリック押し）
-void AMyCharacter::StartCasting(const FInputActionValue& Value)
+void AMyCharacter::StartCastingInput(const FInputActionValue& Value)
 {
-	if (!FishingRod || !bRodEquipped) return;
-	FishingRod->BeginChargeCast();  // 投げ距離チャージ開始
+	if (FishingRod)
+		FishingRod->StartCasting();
 }
 
-// Cast 完了（クリック離す）
-void AMyCharacter::ReleaseCasting(const FInputActionValue& Value)
+void AMyCharacter::ReleaseCastingInput(const FInputActionValue& Value)
 {
-	if (!FishingRod || !bRodEquipped) return;
-	FishingRod->ReleaseCast();  // 投げる
+	if (FishingRod)
+		FishingRod->ReleaseCasting();
 }
 
-// 巻き取り
-void AMyCharacter::ReelInLine(const FInputActionValue& Value)
+void AMyCharacter::StartReelInput(const FInputActionValue& Value)
 {
-	if (!FishingRod || !bRodEquipped) return;
-
-	// 魚がかかっている場合
-	if (bFishOnLine)
-	{
-		bReeling = true;
-
-		// AFishingRodActor 側の関数でテンション調整
-		FishingRod->AdjustTension(20.f * GetWorld()->GetDeltaSeconds());
-
-		// テンションが安定しているかチェック
-		float Tension = FishingRod->LineTension;
-		if (Tension > 40.f && Tension < 70.f)
-		{
-			// AFishingRodActor 側の関数で魚進行度を増加
-			FishingRod->AddFishProgress(GetWorld()->GetDeltaSeconds() * 10.f);
-
-			if (FishingRod->FishProgress >= 100.f)
-			{
-				UE_LOG(LogTemp, Log, TEXT("🎣 Fish caught!"));
-				bFishOnLine = false;
-				bReeling = false;
-
-				// 釣り竿をリセット
-				FishingRod->ResetFishingState();
-			}
-		}
-	}
-	else
-	{
-		// 魚がかかっていない場合は通常リール巻き
+	if (FishingRod)
 		FishingRod->StartReel();
-	}
 }
 
-// 上下操作
-void AMyCharacter::MoveRodUpDown(const FInputActionValue& Value)
+void AMyCharacter::StopReelInput(const FInputActionValue& Value)
 {
-	if (!FishingRod || !bRodEquipped) return;
-
-	float Axis = Value.Get<float>();
-	FishingRod->AdjustRodPitch(Axis);
-}
-
-void AMyCharacter::MoveFishingRod(const FInputActionValue& Value)
-{
-	if (!bIsFishing || !FishingRod) return;
-
-	const float MoveValue = Value.Get<float>();
-	FVector NewLoc = FishingRod->GetActorLocation();
-	NewLoc += GetActorRightVector() * MoveValue * 10.0f;
-	FishingRod->SetActorLocation(NewLoc);
-}
-
-void AMyCharacter::NotifyControllerChanged()
-{
-	Super::NotifyControllerChanged();
-
-	if (APlayerController* PC = Cast<APlayerController>(Controller))
-	{
-		if (UEnhancedInputLocalPlayerSubsystem* Subsystem =
-			ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PC->GetLocalPlayer()))
-		{
-			Subsystem->ClearAllMappings();
-			if (DefaultMappingContext)
-			{
-				Subsystem->AddMappingContext(DefaultMappingContext, 0);
-			}
-		}
-	}
+	if (FishingRod)
+		FishingRod->StopReel();
 }

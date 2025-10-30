@@ -10,42 +10,44 @@ AFishingRodActor::AFishingRodActor()
     RootComponent = RodMesh;
 }
 
+void AFishingRodActor::BeginPlay()
+{
+    Super::BeginPlay();
+    CurrentState = EFishingState::Idle;
+
+}
+
 void AFishingRodActor::Tick(float DeltaTime)
 {
     Super::Tick(DeltaTime);
 
-    if (bIsCharging)
-        CastCharge = FMath::Min(CastCharge + DeltaTime * 50.f, 100.f);
-
-    if (CurrentState == EFishingState::Reeling || CurrentState == EFishingState::Hooked)
+    if (CurrentState == EFishingState::Hooked || CurrentState == EFishingState::Reeling)
+    {
         UpdateReeling(DeltaTime);
+    }
+
+    if (CurrentState == EFishingState::Casting)
+    {
+        CastPower = FMath::Min(CastPower + DeltaTime * 30.f, 100.f);
+    }
 }
 
-void AFishingRodActor::BeginChargeCast()
+void AFishingRodActor::StartCasting()
 {
-    if (CurrentState != EFishingState::Idle) return;
-    bIsCharging = true;
-    CastCharge = 0.f;
+    CurrentState = EFishingState::Casting;
+    CastPower = 0.f;
+    UE_LOG(LogTemp, Log, TEXT("🎯 キャスト溜め開始"));
 }
 
-void AFishingRodActor::ReleaseCast()
+void AFishingRodActor::ReleaseCasting()
 {
-    if (!bIsCharging) return;
-    bIsCharging = false;
-    bLineInWater = true;
+    if (CurrentState != EFishingState::Casting) return;
 
-    UE_LOG(LogTemp, Log, TEXT("Casting line distance: %f"), CastCharge);
-
-    float BiteDelay = FMath::RandRange(3.f, 8.f);
-    GetWorldTimerManager().SetTimer(FishBiteTimer, this, &AFishingRodActor::FishBite, BiteDelay, false);
-}
-
-void AFishingRodActor::StartFishing()
-{
-    float BiteDelay = FMath::FRandRange(2.f, 6.f);
-    GetWorldTimerManager().SetTimer(BiteTimerHandle, this, &AFishingRodActor::FishBite, BiteDelay, false);
     CurrentState = EFishingState::Waiting;
-    UE_LOG(LogTemp, Log, TEXT("🐠 待機中..."));
+    UE_LOG(LogTemp, Log, TEXT("🎣 キャスト完了！パワー: %f"), CastPower);
+
+    float BiteDelay = FMath::FRandRange(2.f, 5.f);
+    GetWorldTimerManager().SetTimer(BiteTimerHandle, this, &AFishingRodActor::FishBite, BiteDelay, false);
 }
 
 void AFishingRodActor::FishBite()
@@ -53,105 +55,79 @@ void AFishingRodActor::FishBite()
     if (CurrentState != EFishingState::Waiting) return;
 
     CurrentState = EFishingState::Hooked;
-    UE_LOG(LogTemp, Warning, TEXT("🐟 魚がヒット！テンション開始"));
+    bFishOn = true;
     LineTension = 40.f;
     FishForce = 50.f;
+
+    UE_LOG(LogTemp, Warning, TEXT("🐟 魚がヒット！"));
 }
 
 void AFishingRodActor::StartReel()
 {
-    if (CurrentState == EFishingState::Hooked || CurrentState == EFishingState::Reeling)
+    if (CurrentState == EFishingState::Hooked)
     {
-        bIsReeling = true;
         CurrentState = EFishingState::Reeling;
+        UE_LOG(LogTemp, Log, TEXT("🎞 巻き取り開始"));
     }
 }
 
 void AFishingRodActor::StopReel()
 {
-    bIsReeling = false;
+    if (CurrentState == EFishingState::Reeling)
+    {
+        CurrentState = EFishingState::Hooked;
+        UE_LOG(LogTemp, Log, TEXT("🛑 巻き取り停止"));
+    }
 }
 
 void AFishingRodActor::UpdateReeling(float DeltaTime)
 {
-    float FishPull = FMath::Sin(GetWorld()->TimeSeconds * 1.8f) * 15.f;
+    if (!bFishOn) return;
+
+    // 魚の引き具合
+    float FishPull = FMath::Sin(GetWorld()->TimeSeconds * 2.f) * 15.f;
     FishForce = FMath::Clamp(50.f + FishPull, 20.f, 80.f);
 
-    ReelSpeed = bIsReeling ? FMath::FInterpTo(ReelSpeed, 30.f, DeltaTime, 2.f)
-        : FMath::FInterpTo(ReelSpeed, 0.f, DeltaTime, 2.f);
+    // 自動リール速度（テスト用）
+    ReelSpeed = FMath::FInterpTo(ReelSpeed, 30.f, DeltaTime, 2.f);
 
-    float AngleFactor = 1.f - (RodPitch / 45.f);
-    LineTension += ((FishForce - ReelSpeed) * AngleFactor) * DeltaTime * 0.8f;
+    // テンション更新
+    LineTension += ((FishForce - ReelSpeed) * 0.5f) * DeltaTime;
     LineTension = FMath::Clamp(LineTension, 0.f, 100.f);
 
     if (LineTension > 95.f)
     {
-        UE_LOG(LogTemp, Warning, TEXT("💥 糸が切れた！"));
+        UE_LOG(LogTemp, Error, TEXT("💥 糸が切れた！"));
         CurrentState = EFishingState::Fail;
-        ResetFishingState();
+        ResetFishing();
     }
     else if (LineTension < 10.f)
     {
-        UE_LOG(LogTemp, Warning, TEXT("❌ 緩みすぎて逃げられた"));
+        UE_LOG(LogTemp, Warning, TEXT("❌ 魚が逃げた"));
         CurrentState = EFishingState::Fail;
-        ResetFishingState();
+        ResetFishing();
     }
-    else if (bIsReeling && FMath::IsNearlyEqual(LineTension, 50.f, 10.f))
+    else if (LineTension > 40.f && LineTension < 60.f)
     {
+        static float StableTime = 0.f;
         StableTime += DeltaTime;
-        if (StableTime > 2.5f)
+        if (StableTime > 3.f)
         {
-            UE_LOG(LogTemp, Log, TEXT("🎯 魚を釣り上げた！成功！"));
+            UE_LOG(LogTemp, Log, TEXT("✅ 魚を釣り上げた！成功！"));
             CurrentState = EFishingState::Success;
-            ResetFishingState();
+            ResetFishing();
+            StableTime = 0.f;
         }
     }
 }
 
-void AFishingRodActor::AdjustRodPitch(float Axis)
+void AFishingRodActor::ResetFishing()
 {
-    if (CurrentState == EFishingState::Idle) return;
-    RodPitch = FMath::Clamp(RodPitch + Axis * 2.f, -10.f, 45.f);
-    FRotator NewRot = GetActorRotation();
-    NewRot.Pitch = RodPitch;
-    SetActorRotation(NewRot);
-}
-
-void AFishingRodActor::AdjustRodYaw(float Axis)
-{
-    if (CurrentState == EFishingState::Idle) return;
-    RodYaw += Axis * 2.f;
-    FRotator NewRot = GetActorRotation();
-    NewRot.Yaw = RodYaw;
-    SetActorRotation(NewRot);
-}
-
-void AFishingRodActor::AdjustTension(float Delta)
-{
-    LineTension = FMath::Clamp(LineTension + Delta, 0.f, 100.f);
-}
-
-void AFishingRodActor::AddFishProgress(float Delta)
-{
-    FishProgress = FMath::Clamp(FishProgress + Delta, 0.f, 100.f);
-}
-
-void AFishingRodActor::ResetFishingState()
-{
-    UE_LOG(LogTemp, Log, TEXT("🎣 フィッシングリセット"));
-
     GetWorldTimerManager().ClearTimer(BiteTimerHandle);
-    GetWorldTimerManager().ClearTimer(FishBiteTimer);
-
-    bIsCharging = false;
-    bLineInWater = false;
-    bIsReeling = false;
-    CastCharge = 0.f;
+    CastPower = 0.f;
     LineTension = 0.f;
-    FishProgress = 0.f;
     FishForce = 0.f;
     ReelSpeed = 0.f;
-    RodPitch = 10.f;
-    RodYaw = 0.f;
-    StableTime = 0.f;
+    bFishOn = false;
+    CurrentState = EFishingState::Idle;
 }

@@ -56,20 +56,19 @@ public:
 	//竿アクション
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Fishing, meta = (AllowPrivateAccess = "true"))
 	TSubclassOf<class AFishingRodActor> FishingRodClass;
-	
-	//左右へのアクション
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
-	UInputAction* FishingMoveAction;
 
 	// 新アクション
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
-	UInputAction* CastLineAction;
+	UInputAction* StartCasting;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
-	UInputAction* ReelInAction;
+	UInputAction* ReleaseCasting;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
-	UInputAction* RodUpDownAction;
+	UInputAction* StartReel;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
+	UInputAction* StopReel;
 
 	UPROPERTY(BlueprintReadWrite, Category = "Fishing")
 	bool bFishOnLine = false; // 魚がかかっているか
@@ -100,13 +99,10 @@ protected:
 	void Look(const FInputActionValue& Value);
 	void InteractWithBoat(const FInputActionValue& Value);
 	void ToggleEquipRod(const FInputActionValue& Value);
-	void MoveFishingRod(const FInputActionValue& Value);
-	void StartCasting(const FInputActionValue& Value);
-	void ReleaseCasting(const FInputActionValue& Value);
-	void ReelInLine(const FInputActionValue& Value);
-	void MoveRodUpDown(const FInputActionValue& Value);
-	//void StopFishing();
-	//void StartFishing(const FInputActionValue& Value);
+	void StartCastingInput(const FInputActionValue& Value);
+	void ReleaseCastingInput(const FInputActionValue& Value);
+	void StartReelInput(const FInputActionValue& Value);
+	void StopReelInput(const FInputActionValue& Value);
 
 	/** 釣り竿の装備／収納切り替え */
 	void ToggleFishingRod(bool bEquip);
@@ -122,7 +118,7 @@ public:
 	//virtual void Tick(float DeltaTime) override;
 protected:
 
-	virtual void NotifyControllerChanged() override;
+	//virtual void NotifyControllerChanged() override;
 
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
