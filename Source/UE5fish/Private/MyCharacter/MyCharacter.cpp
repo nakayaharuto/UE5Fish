@@ -29,6 +29,14 @@ AMyCharacter::AMyCharacter()
 	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
 	FollowCamera->bUsePawnControlRotation = false;
 
+	// 釣り用カメラ
+	FishingCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FishingCamera"));
+	FishingCamera->SetupAttachment(RootComponent);
+	FishingCamera->SetRelativeLocation(FVector(-200.f, 0.f, 100.f));
+	FishingCamera->bUsePawnControlRotation = true;
+	FishingCamera->SetActive(false);
+
+
 	// 移動はプレイヤーの向きを変える
 	bUseControllerRotationYaw = false;
 	GetCharacterMovement()->bOrientRotationToMovement = true;
@@ -67,12 +75,13 @@ void AMyCharacter::BeginPlay()
 			FishingRod->SetActorHiddenInGame(true);
 		}
 	}
+
 }
 
 void AMyCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
+	
 	
 }
 
@@ -153,38 +162,51 @@ void AMyCharacter::ToggleEquipRod(const FInputActionValue& Value)
 
 void AMyCharacter::ToggleFishingRod(bool bEquip)
 {
-	if (!FishingRod) return;
+	bIsFishing = !bIsFishing;
 
-	FishingRod->SetActorHiddenInGame(!bEquip);
+	if (FishingRod)
+		FishingRod->SetActorHiddenInGame(!bIsFishing);
 
-	if (bEquip)
-	{
-		bIsFishing = true;
-		FishingRod->ShowTargetMark(true);
-
-		CameraBoom->TargetArmLength = 350.0f;
-		CameraBoom->SocketOffset = FVector(-50.f, 70.f, 20.f);
-	}
-	else
-	{
-		bIsFishing = false;
-		FishingRod->ShowTargetMark(false);
-
-		CameraBoom->TargetArmLength = 300.0f;
-		CameraBoom->SocketOffset = FVector::ZeroVector;
-	}
+	CameraBoom->SetActive(!bIsFishing);
+	FollowCamera->SetActive(!bIsFishing);
+	FishingCamera->SetActive(bIsFishing);
 }
 
 void AMyCharacter::StartCastingInput(const FInputActionValue& Value)
 {
-	if (FishingRod)
-		FishingRod->StartCasting();
+	if (!bIsFishing || !FishingRod) return;
+
+	FVector CamLoc = FishingCamera->GetComponentLocation();
+	FVector CamDir = FishingCamera->GetForwardVector();
+
+	FHitResult Hit;
+	FVector End = CamLoc + CamDir * 1500.f;
+	FCollisionQueryParams Params;
+	Params.AddIgnoredActor(this);
+
+	if (GetWorld()->LineTraceSingleByChannel(Hit, CamLoc, End, ECC_Visibility, Params))
+		FishingRod->ShowCastTarget(Hit.Location);
+	else
+		FishingRod->ShowCastTarget(End);
 }
 
 void AMyCharacter::ReleaseCastingInput(const FInputActionValue& Value)
 {
-	if (FishingRod)
-		FishingRod->ReleaseCasting();
+	if (!bIsFishing || !FishingRod) return;
+
+	FVector CamLoc = FishingCamera->GetComponentLocation();
+	FVector CamDir = FishingCamera->GetForwardVector();
+
+	FHitResult Hit;
+	FVector End = CamLoc + CamDir * 1500.f;
+	FCollisionQueryParams Params;
+	Params.AddIgnoredActor(this);
+
+	FVector Target = End;
+	if (GetWorld()->LineTraceSingleByChannel(Hit, CamLoc, End, ECC_Visibility, Params))
+		Target = Hit.Location;
+
+	FishingRod->CastToLocation(Target);
 }
 
 void AMyCharacter::StartReelInput(const FInputActionValue& Value)

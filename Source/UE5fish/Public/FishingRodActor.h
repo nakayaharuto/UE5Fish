@@ -4,17 +4,14 @@
 #include "GameFramework/Actor.h"
 #include "FishingRodActor.generated.h"
 
-UENUM(BlueprintType)
-enum class EFishingState : uint8
-{
-    Idle,
-    Casting,
-    Waiting,
-    Hooked,
-    Reeling,
-    Success,
-    Fail
-};
+class UCableComponent;
+class ALureActor;
+class AFishActor;
+class UNiagaraSystem;
+class UUserWidget;
+class UFishingWidget;
+
+class AFishActor;
 
 UCLASS()
 class UE5FISH_API AFishingRodActor : public AActor
@@ -24,51 +21,57 @@ class UE5FISH_API AFishingRodActor : public AActor
 public:
     AFishingRodActor();
 
+    virtual void Tick(float DeltaTime) override;
+
+    void ShowCastTarget(const FVector& Location);
+    void CastToLocation(const FVector& TargetLocation);
+    void StartReel();
+    void StopReel();
+
 protected:
     virtual void BeginPlay() override;
 
-public:
-    virtual void Tick(float DeltaTime) override;
+    void SpawnCaughtFish();
 
-    void StartCasting();
-    void ReleaseCasting();
-    void FishBite();
-    void StartReel();
-    void StopReel();
-    void UpdateReeling(float DeltaTime);
-    void ResetFishing();
+    // --- components
+    UPROPERTY(VisibleAnywhere)
+    USkeletalMeshComponent* RodMesh;
 
-    // 🎯 エフェクト
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Fishing|Effects")
-    class UNiagaraSystem* TargetMarkEffect;
+    UPROPERTY(VisibleAnywhere)
+    UCableComponent* Cable;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Fishing|Effects")
-    class UNiagaraSystem* CastLineEffect;
+    // --- asset links (set in editor)
+    UPROPERTY(EditDefaultsOnly, Category = "Fishing")
+    TSubclassOf<ALureActor> LureClass;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Fishing|Effects")
-    class UNiagaraSystem* SplashEffect;
+    UPROPERTY(EditDefaultsOnly, Category = "Fishing")
+    TSubclassOf<AFishActor> FishClass;
+
+    UPROPERTY(EditDefaultsOnly, Category = "FX")
+    UNiagaraSystem* CastMarkerFX;
+
+    UPROPERTY(EditDefaultsOnly, Category = "FX")
+    UNiagaraSystem* FishSplashFX;
+
+    UPROPERTY(EditDefaultsOnly, Category = "UI")
+    TSubclassOf<UUserWidget> FishingWidgetClass;
+
+    // runtime
+    UPROPERTY()
+    ALureActor* CurrentLure;
 
     UPROPERTY()
-    class UNiagaraComponent* TargetMarkComponent;
+    AFishActor* CaughtFish;
 
     UPROPERTY()
-    class UNiagaraComponent* ActiveCastLine;
+    UFishingWidget* FishingWidget;
 
-    // Rod
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Fishing")
-    class USkeletalMeshComponent* RodMesh;
-
-    // マーク表示関数
-    UFUNCTION(BlueprintCallable, Category = "Fishing")
-    void ShowTargetMark(bool bShow);
-
-private:
-    FTimerHandle BiteTimerHandle;
-    float CastPower = 0.f;
-    float LineTension = 0.f;
-    float FishForce = 0.f;
-    float ReelSpeed = 0.f;
-    bool bFishOn = false;
-    EFishingState CurrentState;
+    FVector TargetLocation;
+    bool bIsCasting = false;
+    bool bIsReeling = false;
+    bool bIsFishBiting = false;
+    bool bFishCaught = false;
+    float FishReelProgress = 0.f;
+    float ReelRequired = 1.0f; // 1.0 で釣り上げ成功
 };
 

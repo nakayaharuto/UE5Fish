@@ -80,6 +80,10 @@ public:
 	UPROPERTY(BlueprintReadWrite, Category = "Fishing")
 	float LineTension = 0.f;
 
+	//フィッシュカメラ
+	UPROPERTY(VisibleAnywhere)
+	UCameraComponent* FishingCamera;
+
 public:
 	// Sets default values for this character's properties
 	AMyCharacter();

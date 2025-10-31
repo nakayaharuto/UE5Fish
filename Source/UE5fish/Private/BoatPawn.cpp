@@ -239,8 +239,8 @@ void ABoatPawn::ExitBoat(const FInputActionValue& Value)
 	bHasDriver = false;
 
 	// --- キャラの状態更新 ---
-	Character->bIsInBoat = false;
-	Character->CurrentBoat = nullptr;
+	//Character->bIsInBoat = false;
+	//Character->CurrentBoat = nullptr;
 
 	// --- カメラを戻す ---
 	PC->SetViewTargetWithBlend(Character, 0.5f, EViewTargetBlendFunction::VTBlend_Cubic);
