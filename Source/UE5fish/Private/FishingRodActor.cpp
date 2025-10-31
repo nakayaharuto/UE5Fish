@@ -1,6 +1,8 @@
 ﻿#include "FishingRodActor.h"
 #include "TimerManager.h"
 #include "Kismet/GameplayStatics.h"
+#include "NiagaraFunctionLibrary.h"
+#include "NiagaraComponent.h"
 
 AFishingRodActor::AFishingRodActor()
 {
@@ -13,8 +15,23 @@ AFishingRodActor::AFishingRodActor()
 void AFishingRodActor::BeginPlay()
 {
     Super::BeginPlay();
+
     CurrentState = EFishingState::Idle;
 
+    // 🎯 ターゲットマーク生成（非表示）
+    if (TargetMarkEffect)
+    {
+        TargetMarkComponent = UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+            GetWorld(),
+            TargetMarkEffect,
+            GetActorLocation() + GetActorForwardVector() * 300.f,
+            FRotator::ZeroRotator
+        );
+        if (TargetMarkComponent)
+        {
+            TargetMarkComponent->SetVisibility(false);
+        }
+    }
 }
 
 void AFishingRodActor::Tick(float DeltaTime)
@@ -32,6 +49,12 @@ void AFishingRodActor::Tick(float DeltaTime)
     }
 }
 
+void AFishingRodActor::ShowTargetMark(bool bShow)
+{
+    if (TargetMarkComponent)
+        TargetMarkComponent->SetVisibility(bShow);
+}
+
 void AFishingRodActor::StartCasting()
 {
     CurrentState = EFishingState::Casting;
@@ -46,6 +69,29 @@ void AFishingRodActor::ReleaseCasting()
     CurrentState = EFishingState::Waiting;
     UE_LOG(LogTemp, Log, TEXT("🎣 キャスト完了！パワー: %f"), CastPower);
 
+    // 💥 糸エフェクト
+    if (CastLineEffect)
+    {
+        FVector StartPos = GetActorLocation() + GetActorForwardVector() * 100.f;
+        ActiveCastLine = UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+            GetWorld(),
+            CastLineEffect,
+            StartPos,
+            GetActorRotation()
+        );
+    }
+
+    // 🌊 着水エフェクト
+    if (SplashEffect)
+    {
+        FVector WaterPos = GetActorLocation() + GetActorForwardVector() * (CastPower * 10.f);
+        UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), SplashEffect, WaterPos);
+    }
+
+    // 🎯 マーク非表示
+    ShowTargetMark(false);
+
+    // 魚がかかるまでの遅延
     float BiteDelay = FMath::FRandRange(2.f, 5.f);
     GetWorldTimerManager().SetTimer(BiteTimerHandle, this, &AFishingRodActor::FishBite, BiteDelay, false);
 }
@@ -84,16 +130,13 @@ void AFishingRodActor::UpdateReeling(float DeltaTime)
 {
     if (!bFishOn) return;
 
-    // 魚の引き具合
     float FishPull = FMath::Sin(GetWorld()->TimeSeconds * 2.f) * 15.f;
     FishForce = FMath::Clamp(50.f + FishPull, 20.f, 80.f);
-
-    // 自動リール速度（テスト用）
     ReelSpeed = FMath::FInterpTo(ReelSpeed, 30.f, DeltaTime, 2.f);
-
-    // テンション更新
     LineTension += ((FishForce - ReelSpeed) * 0.5f) * DeltaTime;
     LineTension = FMath::Clamp(LineTension, 0.f, 100.f);
+
+    static float StableTime = 0.f;
 
     if (LineTension > 95.f)
     {
@@ -109,7 +152,6 @@ void AFishingRodActor::UpdateReeling(float DeltaTime)
     }
     else if (LineTension > 40.f && LineTension < 60.f)
     {
-        static float StableTime = 0.f;
         StableTime += DeltaTime;
         if (StableTime > 3.f)
         {

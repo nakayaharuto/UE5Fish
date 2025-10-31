@@ -160,16 +160,16 @@ void AMyCharacter::ToggleFishingRod(bool bEquip)
 	if (bEquip)
 	{
 		bIsFishing = true;
+		FishingRod->ShowTargetMark(true);
 
-		// 🎣 カメラを右後ろにズラす
 		CameraBoom->TargetArmLength = 350.0f;
 		CameraBoom->SocketOffset = FVector(-50.f, 70.f, 20.f);
 	}
 	else
 	{
 		bIsFishing = false;
+		FishingRod->ShowTargetMark(false);
 
-		// 通常カメラ位置に戻す
 		CameraBoom->TargetArmLength = 300.0f;
 		CameraBoom->SocketOffset = FVector::ZeroVector;
 	}

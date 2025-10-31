@@ -7,13 +7,13 @@
 UENUM(BlueprintType)
 enum class EFishingState : uint8
 {
-    Idle,       // 待機中
-    Casting,    // キャスト中
-    Waiting,    // 魚待ち
-    Hooked,     // 魚ヒット
-    Reeling,    // 巻き取り中
-    Success,    // 成功
-    Fail         // 失敗
+    Idle,
+    Casting,
+    Waiting,
+    Hooked,
+    Reeling,
+    Success,
+    Fail
 };
 
 UCLASS()
@@ -30,31 +30,45 @@ protected:
 public:
     virtual void Tick(float DeltaTime) override;
 
-    /** メッシュ */
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-    USkeletalMeshComponent* RodMesh;
+    void StartCasting();
+    void ReleaseCasting();
+    void FishBite();
+    void StartReel();
+    void StopReel();
+    void UpdateReeling(float DeltaTime);
+    void ResetFishing();
 
-    /** 現在の状態 */
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Fishing")
-    EFishingState CurrentState = EFishingState::Idle;
+    // 🎯 エフェクト
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Fishing|Effects")
+    class UNiagaraSystem* TargetMarkEffect;
 
-    float CastPower = 0.f;//キャストの力
-    float LineTension = 0.f;//糸の張力
-    bool bFishOn = false;//魚がヒットしたか判定
-    float FishForce = 0.f;
-    float ReelSpeed = 0.f;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Fishing|Effects")
+    class UNiagaraSystem* CastLineEffect;
 
-    // --- 外部操作用 ---
-    void StartCasting();    //ボタン押下で溜め開始
-    void ReleaseCasting();  //ボタン離しで投げる
-    void StartReel();       //リール開始
-    void StopReel();        //リール停止
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Fishing|Effects")
+    class UNiagaraSystem* SplashEffect;
+
+    UPROPERTY()
+    class UNiagaraComponent* TargetMarkComponent;
+
+    UPROPERTY()
+    class UNiagaraComponent* ActiveCastLine;
+
+    // Rod
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Fishing")
+    class USkeletalMeshComponent* RodMesh;
+
+    // マーク表示関数
+    UFUNCTION(BlueprintCallable, Category = "Fishing")
+    void ShowTargetMark(bool bShow);
 
 private:
-    /** 魚がかかるまでの遅延タイマー */
     FTimerHandle BiteTimerHandle;
-
-    void FishBite();      // 魚ヒット
-    void ResetFishing();  // 状態リセット
-    void UpdateReeling(float DeltaTime);
+    float CastPower = 0.f;
+    float LineTension = 0.f;
+    float FishForce = 0.f;
+    float ReelSpeed = 0.f;
+    bool bFishOn = false;
+    EFishingState CurrentState;
 };
+
