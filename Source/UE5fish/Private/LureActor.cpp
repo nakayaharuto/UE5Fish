@@ -6,7 +6,7 @@ ALureActor::ALureActor()
     PrimaryActorTick.bCanEverTick = false;
 
     // スケルタルメッシュに変更
-    Mesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("Mesh"));
+    Mesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Mesh"));
     RootComponent = Mesh;
     Mesh->SetSimulatePhysics(true);
     Mesh->SetCollisionProfileName(TEXT("PhysicsActor"));

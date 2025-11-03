@@ -21,6 +21,6 @@ protected:
 
     /** ルアーメッシュ（スケルタルメッシュ） */
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Lure")
-    class USkeletalMeshComponent* Mesh;
+    class UStaticMeshComponent* Mesh;
 
 };

@@ -145,6 +145,27 @@ void AFishingRodActor::Tick(float DeltaTime)
             }
         }
 
+        if (bIsFishingMode) // ← MyCharacter 側で竿を構えている状態を判定
+        {
+            APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
+            if (PC)
+            {
+                FVector WorldLoc, WorldDir;
+                PC->DeprojectMousePositionToWorld(WorldLoc, WorldDir);
+
+                FVector Start = WorldLoc;
+                FVector End = Start + WorldDir * 5000.f;
+
+                FHitResult Hit;
+                if (GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility))
+                {
+                    // マーカー更新
+                    ShowCastTarget(Hit.Location);
+                }
+            }
+        }
+
+
         // 糸を巻く処理（常に巻く場合は bIsReeling == true で）
         if (bIsReeling)
         {
@@ -165,6 +186,7 @@ void AFishingRodActor::Tick(float DeltaTime)
                 {
                     // 釣り上げ成功
                     bFishCaught = true;
+                    bIsFishingMode = false;
                     bIsReeling = false;
                     bIsCasting = false;
                     SpawnCaughtFish();

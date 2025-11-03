@@ -56,6 +56,12 @@ protected:
     UPROPERTY(EditDefaultsOnly, Category = "UI")
     TSubclassOf<UUserWidget> FishingWidgetClass;
 
+    UPROPERTY(EditAnywhere, Category = "Fishing")
+    TSubclassOf<class AFishingCastMarkerActor> CastMarkerActorClass;
+
+    UPROPERTY()
+    AFishingCastMarkerActor* CastMarkerActor;
+
     // runtime
     UPROPERTY()
     ALureActor* CurrentLure;
@@ -69,6 +75,7 @@ protected:
     FVector TargetLocation;
     bool bIsCasting = false;
     bool bIsReeling = false;
+    bool bIsFishingMode = false;
     bool bIsFishBiting = false;
     bool bFishCaught = false;
     float FishReelProgress = 0.f;
