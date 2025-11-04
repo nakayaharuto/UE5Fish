@@ -4,32 +4,50 @@
 #include "GameFramework/Actor.h"
 #include "LureActor.generated.h"
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnHitWaterDelegate);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnFishHitDelegate);
+
 UCLASS()
 class UE5FISH_API ALureActor : public AActor
 {
     GENERATED_BODY()
-
 public:
     ALureActor();
 
-    UFUNCTION()
-    void AddImpulse(const FVector& Force);
+    virtual void Tick(float DeltaTime) override;
+    void LaunchLure(const FVector& InTarget, float InSpeed);
+
+    UFUNCTION(BlueprintCallable)
+    void SetBeingReeled(bool bReeled) { bIsBeingReeled = bReeled; }
+
+    UStaticMeshComponent* GetMesh() const { return Mesh; }
+
+    UPROPERTY(BlueprintAssignable)
+    FOnHitWaterDelegate OnHitWater;
+
+    UPROPERTY(BlueprintAssignable)
+    FOnFishHitDelegate OnFishHit;
 
 protected:
     virtual void BeginPlay() override;
 
-    UFUNCTION()
-    void OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor,
-        UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
+private:
+    UPROPERTY(VisibleAnywhere)
+    UStaticMeshComponent* Mesh;
 
-    /** メッシュ */
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Lure")
-    class UStaticMeshComponent* Mesh;
+    FVector StartLocation;
+    FVector TargetLocation;
+    float Speed = 1000.f;
+    float MaxDistance = 1500.f;
 
-    /** ケーブル接続ポイント */
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Lure")
-    class USceneComponent* AttachPoint;
+    bool bIsFlying = false;
+    bool bIsBeingReeled = false;
+    bool bHitWater = false;
+    bool bFishHit = false;
 
-    /** 水面などに当たったら停止する */
-    bool bHasStopped = false;
+    UPROPERTY(EditAnywhere, Category = "Fishing")
+    TSubclassOf<AActor> WaterActorClass;
+
+    UPROPERTY(EditAnywhere, Category = "Fishing")
+    float FishHitChancePerSecond = 0.5f;
 };

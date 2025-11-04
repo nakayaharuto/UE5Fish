@@ -1,79 +1,80 @@
 ﻿#include "LureActor.h"
 #include "Components/StaticMeshComponent.h"
+#include "Kismet/GameplayStatics.h"
 
 ALureActor::ALureActor()
 {
-    PrimaryActorTick.bCanEverTick = false;
+    PrimaryActorTick.bCanEverTick = true;
 
     Mesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Mesh"));
     RootComponent = Mesh;
-    Mesh->SetSimulatePhysics(true);
+    Mesh->SetSimulatePhysics(false);
+    Mesh->SetMobility(EComponentMobility::Movable);
     Mesh->SetCollisionProfileName(TEXT("PhysicsActor"));
-    Mesh->SetNotifyRigidBodyCollision(true); // ← ヒットイベントを受け取るため
-    Mesh->OnComponentHit.AddDynamic(this, &ALureActor::OnHit);
-
-    AttachPoint = CreateDefaultSubobject<USceneComponent>(TEXT("AttachPoint"));
-    AttachPoint->SetupAttachment(Mesh);
-    AttachPoint->SetRelativeLocation(FVector(0.f, 0.f, 25.f));
-
-    Mesh->SetLinearDamping(1.0f);
-    Mesh->SetAngularDamping(2.0f);
 }
 
 void ALureActor::BeginPlay()
 {
     Super::BeginPlay();
-    if (Mesh)
-    {
-        // メッシュをムーバブルに変更
-        Mesh->SetMobility(EComponentMobility::Movable);
-
-        // 物理を有効化
-        Mesh->SetSimulatePhysics(true);
-
-        // 重力を有効に
-        Mesh->SetEnableGravity(true);
-    }
-    
 }
 
-void ALureActor::AddImpulse(const FVector& Force)
+void ALureActor::LaunchLure(const FVector& InTarget, float InSpeed)
 {
-    if (Mesh && !bHasStopped)
-    {
-        Mesh->AddImpulse(Force, NAME_None, true);
-    }
+    StartLocation = GetActorLocation();
+    TargetLocation = InTarget;
+    Speed = InSpeed;
+    bIsFlying = true;
+    bHitWater = false;
+    bFishHit = false;
 }
 
-void ALureActor::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor,
-    UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
+void ALureActor::Tick(float DeltaTime)
 {
-    if (bHasStopped) return;
+    Super::Tick(DeltaTime);
+    FVector CurrentPos = GetActorLocation();
+    UE_LOG(LogTemp, Log, TEXT("Lure Position: X=%.2f Y=%.2f Z=%.2f"),
+        CurrentPos.X, CurrentPos.Y, CurrentPos.Z);
+    // 巻き取り中はALureActor側で移動させない
+    if (!bIsFlying || bIsBeingReeled) return;
 
-    if (OtherActor && OtherActor != this)
+    FVector Dir = (TargetLocation - GetActorLocation()).GetSafeNormal();
+    FVector NewPos = GetActorLocation() + Dir * Speed * DeltaTime;
+
+    float DistanceTravelled = FVector::Dist(StartLocation, NewPos);
+    if (DistanceTravelled >= MaxDistance)
     {
-        bHasStopped = true;
+        SetActorLocation(TargetLocation);
+        bIsFlying = false;
+        return;
+    }
 
-        // 速度を完全に停止
-        Mesh->SetPhysicsLinearVelocity(FVector::ZeroVector);
-        Mesh->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
-
-        // 一瞬遅らせて物理停止（即時止めるとヒット直後の力が残るため）
-        FTimerHandle TimerHandle_StopPhysics;
-        GetWorld()->GetTimerManager().SetTimer(TimerHandle_StopPhysics, [this]()
+    // 水判定
+    if (!bHitWater && WaterActorClass)
+    {
+        TArray<AActor*> WaterActors;
+        UGameplayStatics::GetAllActorsOfClass(GetWorld(), WaterActorClass, WaterActors);
+        for (AActor* Water : WaterActors)
+        {
+            if (Water && GetActorLocation().Z <= Water->GetActorLocation().Z + 10.f)
             {
-                if (Mesh)
-                {
-                    Mesh->SetSimulatePhysics(false);
-                    Mesh->SetEnableGravity(false);
-                }
-
-            }, 0.05f, false);
-
-        // 少し沈むように位置を調整
-        FVector Loc = GetActorLocation();
-        SetActorLocation(Loc + FVector(0.f, 0.f, -3.f));
-
-        UE_LOG(LogTemp, Log, TEXT("Lure stopped at %s"), *Loc.ToString());
+                bHitWater = true;
+                bIsFlying = false;
+                OnHitWater.Broadcast();
+                break;
+            }
+        }
     }
+
+    // 魚ヒット判定
+    if (!bFishHit)
+    {
+        float Chance = FishHitChancePerSecond * DeltaTime;
+        if (FMath::FRandRange(0.f, 100.f) < Chance)
+        {
+            bFishHit = true;
+            OnFishHit.Broadcast();
+        }
+    }
+
+    SetActorLocation(NewPos);
 }

@@ -179,34 +179,33 @@ void AMyCharacter::StartCastingInput(const FInputActionValue& Value)
 	FVector CamLoc = FishingCamera->GetComponentLocation();
 	FVector CamDir = FishingCamera->GetForwardVector();
 
-	FHitResult Hit;
 	FVector End = CamLoc + CamDir * 1500.f;
+	FHitResult Hit;
 	FCollisionQueryParams Params;
 	Params.AddIgnoredActor(this);
 
 	if (GetWorld()->LineTraceSingleByChannel(Hit, CamLoc, End, ECC_Visibility, Params))
-		FishingRod->ShowCastTarget(Hit.Location);
-	else
-		FishingRod->ShowCastTarget(End);
+		End = Hit.Location;
+
+	FishingRod->ShowCastTarget(End);
 }
 
 void AMyCharacter::ReleaseCastingInput(const FInputActionValue& Value)
 {
 	if (!bIsFishing || !FishingRod) return;
 
-	FVector CamLoc = FishingCamera->GetComponentLocation();
-	FVector CamDir = FishingCamera->GetForwardVector();
+    FVector CamLoc = FishingCamera->GetComponentLocation();
+    FVector CamDir = FishingCamera->GetForwardVector();
 
-	FHitResult Hit;
-	FVector End = CamLoc + CamDir * 1500.f;
-	FCollisionQueryParams Params;
-	Params.AddIgnoredActor(this);
+    FVector End = CamLoc + CamDir * 1500.f;
+    FHitResult Hit;
+    FCollisionQueryParams Params;
+    Params.AddIgnoredActor(this);
 
-	FVector Target = End;
-	if (GetWorld()->LineTraceSingleByChannel(Hit, CamLoc, End, ECC_Visibility, Params))
-		Target = Hit.Location;
+    if (GetWorld()->LineTraceSingleByChannel(Hit, CamLoc, End, ECC_Visibility, Params))
+        End = Hit.Location;
 
-	FishingRod->CastToLocation(Target);
+    FishingRod->CastToLocation(End);
 }
 
 void AMyCharacter::StartReelInput(const FInputActionValue& Value)

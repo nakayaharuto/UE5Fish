@@ -1,79 +1,37 @@
 ﻿#include "FishingRodActor.h"
 #include "LureActor.h"
 #include "FishActor.h"
-#include "FishingWidget.h"
-#include "CableComponent.h"
-#include "NiagaraFunctionLibrary.h"
-#include "NiagaraSystem.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Kismet/GameplayStatics.h"
-#include "Blueprint/UserWidget.h"
 
 AFishingRodActor::AFishingRodActor()
 {
     PrimaryActorTick.bCanEverTick = true;
-
     RodMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("RodMesh"));
     RootComponent = RodMesh;
 
-    Cable = CreateDefaultSubobject<UCableComponent>(TEXT("Cable"));
-    Cable->SetupAttachment(RodMesh, TEXT("RodTip")); // ソケット名 RodTip を想定
-    Cable->SetComponentTickEnabled(false);  // Update停止
-    Cable->bAttachEnd = true;
+    // ケーブル作成
+    LineCable = CreateDefaultSubobject<UCableComponent>(TEXT("LineCable"));
+    LineCable->SetupAttachment(RodMesh, TEXT("RodTip")); // ソケット RodTip からスタート
+    LineCable->bAttachEnd = true; // 後でルアーに付ける
+    LineCable->EndLocation = FVector::ZeroVector;
+    LineCable->CableLength = 100.f; // 初期長さ
+    LineCable->NumSegments = 20;
+    LineCable->SubstepTime = 0.02f;
+    LineCable->SolverIterations = 8;
+    LineCable->CableWidth = 2.f;
+    LineCable->bEnableCollision = false;
 }
 
 void AFishingRodActor::BeginPlay()
 {
     Super::BeginPlay();
-
-    if (RodMesh && RodMesh->SkeletalMesh)
-    {
-        FVector TipLocation = RodMesh->GetSocketLocation(TEXT("RodTip"));
-        UE_LOG(LogTemp, Log, TEXT("RodTip: %s"), *TipLocation.ToString());
-    }
-    else
-    {
-        UE_LOG(LogTemp, Warning, TEXT("RodMesh or SkeletalMesh is null at BeginPlay!"));
-    }
-
-    if (FishingWidgetClass)
-    {
-        if (APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0))
-        {
-            FishingWidget = CreateWidget<UFishingWidget>(PC, FishingWidgetClass);
-            if (FishingWidget)
-            {
-                FishingWidget->AddToViewport();
-                FishingWidget->SetVisibility(ESlateVisibility::Hidden);
-            }
-        }
-    }
-}
-
-void AFishingRodActor::ResetLure()
-{
-    if (SpawnedLure)
-    {
-        SpawnedLure->Destroy(); // 生成したルアーを削除
-        SpawnedLure = nullptr;
-    }
 }
 
 void AFishingRodActor::ShowCastTarget(const FVector& Location)
 {
-    TargetLocation = Location;
-
-    // キャストマーカーを表示（Niagara）
-    if (CastMarkerFX)
-    {
-        UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), CastMarkerFX, Location, FRotator::ZeroRotator);
-    }
-
-    if (FishingWidget)
-    {
-        FishingWidget->SetCastMarkerLocation(Location);
-        FishingWidget->SetVisibility(ESlateVisibility::Visible);
-    }
+    // デバッグ用：ログ出力
+    //UE_LOG(LogTemp, Log, TEXT("Cast Target: %s"), *Location.ToString());
 }
 
 void AFishingRodActor::CastToLocation(const FVector& InTargetLocation)
@@ -86,128 +44,99 @@ void AFishingRodActor::CastToLocation(const FVector& InTargetLocation)
     bFishCaught = false;
     FishReelProgress = 0.f;
 
-    if (FishingWidget)
-    {
-        FishingWidget->SetVisibility(ESlateVisibility::Hidden);
-    }
-
     FVector StartLoc = RodMesh->GetSocketLocation(TEXT("RodTip"));
     FRotator Rot = (InTargetLocation - StartLoc).Rotation();
 
     FActorSpawnParameters Params;
     Params.Owner = this;
-
     CurrentLure = GetWorld()->SpawnActor<ALureActor>(LureClass, StartLoc, Rot, Params);
-    if (!CurrentLure) { bIsCasting = false; return; }
 
-    // Cable 設定
-    Cable->SetAttachEndToComponent(CurrentLure->FindComponentByClass<UStaticMeshComponent>(), NAME_None);
-    Cable->SetVisibility(true);
-    Cable->SetComponentTickEnabled(true);   // ★有効化！
-    Cable->bAttachEnd = true;
+    if (CurrentLure)
+    {
+        CurrentLure->OnHitWater.AddDynamic(this, &AFishingRodActor::StopReel); // 仮: 水に当たったら停止
+        CurrentLure->OnFishHit.AddDynamic(this, &AFishingRodActor::StartReel); // 仮: 魚がヒットしたら自動リール
+        CurrentLure->LaunchLure(InTargetLocation, 1500.f);
+    }
 
-    float Distance = FVector::Dist(StartLoc, InTargetLocation);
-    Cable->CableLength = Distance;          // ★初期長さ設定！
-
-    // 飛ばす力
-    float Strength = FMath::Clamp(Distance * 4.f, 600.f, 3000.f);
-    CurrentLure->AddImpulse((InTargetLocation - StartLoc).GetSafeNormal() * Strength);
+    if (CurrentLure && LineCable)
+    {
+        // ルアーの位置にケーブルの終端を接続
+        LineCable->SetAttachEndTo(CurrentLure, NAME_None);
+    }
 }
 
 void AFishingRodActor::StartReel()
 {
-    if (!bIsCasting || !CurrentLure || bFishCaught) return;
+    if (!CurrentLure || bFishCaught) return;
 
-    // リールは魚がヒットしていなくても巻ける（ゲーム性次第）
     bIsReeling = true;
-    if (FishingWidget)
-    {
-        FishingWidget->ShowReelBar(true);
-    }
+    CurrentLure->SetBeingReeled(true);
 }
 
 void AFishingRodActor::StopReel()
 {
     bIsReeling = false;
-    if (FishingWidget)
-    {
-        FishingWidget->ShowReelBar(false);
-    }
+    if (CurrentLure)
+        CurrentLure->SetBeingReeled(false);
 }
 
 void AFishingRodActor::Tick(float DeltaTime)
 {
     Super::Tick(DeltaTime);
 
-    if (bIsCasting && CurrentLure)
+    if (bIsReeling && CurrentLure && LineCable)
     {
-        // ケーブル長をルアー位置に追従させる
-        FVector RodTipLocation = RodMesh->GetSocketLocation(TEXT("RodTip"));
-        float Distance = FVector::Dist(RodTipLocation, CurrentLure->GetActorLocation());
-        Cable->CableLength = FMath::FInterpTo(Cable->CableLength, Distance, DeltaTime, 5.f); // スムーズ追従
-        // ランダムで魚がヒット（確率は調整可能）
-        if (!bIsFishBiting)
+        FVector RodTip = RodMesh->GetSocketLocation(TEXT("RodTip"));
+        FVector LurePos = CurrentLure->GetActorLocation();
+
+        // 距離に応じてリール速度を調整
+        float Distance = FVector::Distance(RodTip, LurePos);
+        float ReelSpeed = FMath::Clamp(Distance * 2.f, 300.f, 1200.f); // cm/sec
+
+        // 滑らかに移動
+        FVector NewPos = FMath::VInterpTo(LurePos, RodTip, DeltaTime, ReelSpeed / Distance);
+        CurrentLure->SetActorLocation(NewPos);
+
+        // ケーブルの長さを更新
+        LineCable->CableLength = FVector::Distance(RodTip, NewPos);
+
+        // デバッグ出力
+        UE_LOG(LogTemp, Log, TEXT("Reeling lure at position X=%f Y=%f Z=%f"),
+            NewPos.X, NewPos.Y, NewPos.Z);
+    }
+
+    // ルアーが竿に近づいたら巻き取り完了
+    if (CurrentLure)
+    {
+        FVector RodTip = RodMesh->GetSocketLocation(TEXT("RodTip"));
+        if (FVector::Dist(CurrentLure->GetActorLocation(), RodTip) < 100.f)
         {
-            // 発生率: 秒あたり 0.5% 〜 2% 程度の間で調整
-            float HitChancePerSecond = 0.5f; // 0.5% / sec
-            if (FMath::FRandRange(0.f, 100.f) < HitChancePerSecond * DeltaTime)
+            bIsReeling = false;
+            UE_LOG(LogTemp, Log, TEXT("Lure fully reeled in"));
+
+            CurrentLure->Destroy();
+            CurrentLure = nullptr;
+
+            // ケーブルの終端をリセット
+            if (LineCable)
             {
-                bIsFishBiting = true;
-                if (FishingWidget) FishingWidget->ShowFishHit(true);
-                // optional: 再生するサウンドやNiagaraをここで鳴らす
-            }
-        }
-
-        if (bIsFishingMode) // ← MyCharacter 側で竿を構えている状態を判定
-        {
-            APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
-            if (PC)
-            {
-                FVector WorldLoc, WorldDir;
-                PC->DeprojectMousePositionToWorld(WorldLoc, WorldDir);
-
-                FVector Start = WorldLoc;
-                FVector End = Start + WorldDir * 5000.f;
-
-                FHitResult Hit;
-                if (GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility))
-                {
-                    // マーカー更新
-                    ShowCastTarget(Hit.Location);
-                }
-            }
-        }
-
-
-        // 糸を巻く処理（常に巻く場合は bIsReeling == true で）
-        if (bIsReeling)
-        {
-            FVector Tip = RodMesh->GetSocketLocation(TEXT("RodTip"));
-            FVector Pos = CurrentLure->GetActorLocation();
-            FVector Dir = (Tip - Pos).GetSafeNormal();
-
-            float ReelSpeed = 500.f; // 単位: cm/sec （調整）
-            CurrentLure->SetActorLocation(Pos + Dir * ReelSpeed * DeltaTime, true);
-
-            // 魚ヒット中なら釣り上げゲージを進める
-            if (bIsFishBiting)
-            {
-                FishReelProgress += DeltaTime * 0.6f; // ゲージ増加速度
-                if (FishingWidget) FishingWidget->SetReelProgress(FishReelProgress / ReelRequired);
-
-                if (FishReelProgress >= ReelRequired)
-                {
-                    // 釣り上げ成功
-                    bFishCaught = true;
-                    bIsFishingMode = false;
-                    bIsReeling = false;
-                    bIsCasting = false;
-                    SpawnCaughtFish();
-                }
+                LineCable->SetAttachEndTo(nullptr, NAME_None);
+                LineCable->CableLength = 0.f;
+                LineCable->SetVisibility(false);
             }
         }
     }
 }
+
+void AFishingRodActor::ResetLure()
+{
+    if (CurrentLure)
+    {
+        CurrentLure->Destroy();
+        CurrentLure = nullptr;
+    }
+}
+
 void AFishingRodActor::SpawnCaughtFish()
 {
     if (!FishClass) return;
@@ -218,25 +147,17 @@ void AFishingRodActor::SpawnCaughtFish()
 
     CaughtFish = GetWorld()->SpawnActor<AFishActor>(FishClass, Loc, FRotator::ZeroRotator, Params);
 
-    // スプラッシュFX
-    if (FishSplashFX)
-    {
-        UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), FishSplashFX, Loc);
-    }
-
     // 糸を非表示にしてルアー破棄
     if (CurrentLure)
     {
         CurrentLure->Destroy();
         CurrentLure = nullptr;
     }
-    Cable->SetVisibility(false);
 
-    // UI 通知
-    if (FishingWidget)
+    if (LineCable)
     {
-        FishingWidget->ShowFishHit(false);
-        FishingWidget->OnFishCaught(CaughtFish);
-        FishingWidget->SetCastMarkerLocation(TargetLocation);
+        LineCable->SetAttachEndTo(CurrentLure, NAME_None);
+        LineCable->CableLength = 0.f;
+        LineCable->SetVisibility(true);
     }
 }
