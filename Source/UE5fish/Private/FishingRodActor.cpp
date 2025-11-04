@@ -50,6 +50,15 @@ void AFishingRodActor::BeginPlay()
     }
 }
 
+void AFishingRodActor::ResetLure()
+{
+    if (SpawnedLure)
+    {
+        SpawnedLure->Destroy(); // 生成したルアーを削除
+        SpawnedLure = nullptr;
+    }
+}
+
 void AFishingRodActor::ShowCastTarget(const FVector& Location)
 {
     TargetLocation = Location;
@@ -79,7 +88,7 @@ void AFishingRodActor::CastToLocation(const FVector& InTargetLocation)
 
     if (FishingWidget)
     {
-        FishingWidget->SetVisibility(ESlateVisibility::Hidden); // 狙い表示は投げたら消す
+        FishingWidget->SetVisibility(ESlateVisibility::Hidden);
     }
 
     FVector StartLoc = RodMesh->GetSocketLocation(TEXT("RodTip"));
@@ -91,18 +100,18 @@ void AFishingRodActor::CastToLocation(const FVector& InTargetLocation)
     CurrentLure = GetWorld()->SpawnActor<ALureActor>(LureClass, StartLoc, Rot, Params);
     if (!CurrentLure) { bIsCasting = false; return; }
 
-    // Cable の終点をルアーに接続
-    Cable->SetAttachEndTo(CurrentLure, NAME_None);
+    // Cable 設定
+    Cable->SetAttachEndToComponent(CurrentLure->FindComponentByClass<UStaticMeshComponent>(), NAME_None);
     Cable->SetVisibility(true);
-    Cable->SetVisibility(true);
+    Cable->SetComponentTickEnabled(true);   // ★有効化！
+    Cable->bAttachEnd = true;
 
-    // 飛ばす力（距離に応じて自動計算）
     float Distance = FVector::Dist(StartLoc, InTargetLocation);
+    Cable->CableLength = Distance;          // ★初期長さ設定！
+
+    // 飛ばす力
     float Strength = FMath::Clamp(Distance * 4.f, 600.f, 3000.f);
     CurrentLure->AddImpulse((InTargetLocation - StartLoc).GetSafeNormal() * Strength);
-
-    // 保存
-    TargetLocation = InTargetLocation;
 }
 
 void AFishingRodActor::StartReel()
@@ -132,6 +141,10 @@ void AFishingRodActor::Tick(float DeltaTime)
 
     if (bIsCasting && CurrentLure)
     {
+        // ケーブル長をルアー位置に追従させる
+        FVector RodTipLocation = RodMesh->GetSocketLocation(TEXT("RodTip"));
+        float Distance = FVector::Dist(RodTipLocation, CurrentLure->GetActorLocation());
+        Cable->CableLength = FMath::FInterpTo(Cable->CableLength, Distance, DeltaTime, 5.f); // スムーズ追従
         // ランダムで魚がヒット（確率は調整可能）
         if (!bIsFishBiting)
         {

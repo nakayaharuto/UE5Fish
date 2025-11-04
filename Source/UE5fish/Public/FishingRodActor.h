@@ -27,6 +27,7 @@ public:
     void CastToLocation(const FVector& TargetLocation);
     void StartReel();
     void StopReel();
+    void ResetLure();
 
 protected:
     virtual void BeginPlay() override;
@@ -46,6 +47,11 @@ protected:
 
     UPROPERTY(EditDefaultsOnly, Category = "Fishing")
     TSubclassOf<AFishActor> FishClass;
+
+    /** スポーンされたルアーの実体（保持用） */
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Fishing")
+    ALureActor* SpawnedLure;
+
 
     UPROPERTY(EditDefaultsOnly, Category = "FX")
     UNiagaraSystem* CastMarkerFX;

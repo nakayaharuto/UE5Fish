@@ -1,4 +1,3 @@
-// Fill out your copyright notice in the Description page of Project Settings.
 #pragma once
 
 #include "CoreMinimal.h"
@@ -19,8 +18,18 @@ public:
 protected:
     virtual void BeginPlay() override;
 
-    /** ルアーメッシュ（スケルタルメッシュ） */
+    UFUNCTION()
+    void OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor,
+        UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
+
+    /** メッシュ */
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Lure")
     class UStaticMeshComponent* Mesh;
 
+    /** ケーブル接続ポイント */
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Lure")
+    class USceneComponent* AttachPoint;
+
+    /** 水面などに当たったら停止する */
+    bool bHasStopped = false;
 };
