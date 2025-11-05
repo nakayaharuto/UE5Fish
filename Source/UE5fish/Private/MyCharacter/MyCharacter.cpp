@@ -163,9 +163,21 @@ void AMyCharacter::ToggleEquipRod(const FInputActionValue& Value)
 void AMyCharacter::ToggleFishingRod(bool bEquip)
 {
 	bIsFishing = !bIsFishing;
-
 	if (FishingRod)
-		FishingRod->SetActorHiddenInGame(!bIsFishing);
+	{
+		if (bIsFishing)
+		{
+			// 🎣 釣り開始 → 初期化
+			FishingRod->RodMesh->SetVisibility(true, true);
+			FishingRod->ResetRodState();
+		}
+		else
+		{
+			// 🎣 釣り終了 → リセットして安全にしまう
+			FishingRod->RodMesh->SetVisibility(false, true);
+			FishingRod->ResetRodState();
+		}
+	}
 
 	CameraBoom->SetActive(!bIsFishing);
 	FollowCamera->SetActive(!bIsFishing);
@@ -187,7 +199,7 @@ void AMyCharacter::StartCastingInput(const FInputActionValue& Value)
 	if (GetWorld()->LineTraceSingleByChannel(Hit, CamLoc, End, ECC_Visibility, Params))
 		End = Hit.Location;
 
-	FishingRod->ShowCastTarget(End);
+	//FishingRod->ShowCastTarget(End);
 }
 
 void AMyCharacter::ReleaseCastingInput(const FInputActionValue& Value)

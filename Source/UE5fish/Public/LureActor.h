@@ -4,50 +4,55 @@
 #include "GameFramework/Actor.h"
 #include "LureActor.generated.h"
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnHitWaterDelegate);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnFishHitDelegate);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FLureEvent);
 
 UCLASS()
 class UE5FISH_API ALureActor : public AActor
 {
     GENERATED_BODY()
+
 public:
     ALureActor();
-
     virtual void Tick(float DeltaTime) override;
+
     void LaunchLure(const FVector& InTarget, float InSpeed);
-
-    UFUNCTION(BlueprintCallable)
-    void SetBeingReeled(bool bReeled) { bIsBeingReeled = bReeled; }
-
-    UStaticMeshComponent* GetMesh() const { return Mesh; }
+    void SetBeingReeled(bool bReeling, const FVector& ReelTarget);
+    void ResetLure();
 
     UPROPERTY(BlueprintAssignable)
-    FOnHitWaterDelegate OnHitWater;
+    FLureEvent OnHitWater;
 
     UPROPERTY(BlueprintAssignable)
-    FOnFishHitDelegate OnFishHit;
+    FLureEvent OnFishHit;
 
 protected:
     virtual void BeginPlay() override;
 
-private:
     UPROPERTY(VisibleAnywhere)
     UStaticMeshComponent* Mesh;
 
+    // ìäÇ∞ÇΩèÓïÒ
     FVector StartLocation;
-    FVector TargetLocation;
-    float Speed = 1000.f;
-    float MaxDistance = 1500.f;
+    FVector LaunchDirection;
+    float LaunchSpeed;
+    float LaunchTime = 0.f;  // ìäÇ∞ÇƒÇ©ÇÁÇÃåoâﬂéûä‘
+    bool bIsLaunched = false;
 
-    bool bIsFlying = false;
+    // ÉäÅ[ÉãíÜ
     bool bIsBeingReeled = false;
-    bool bHitWater = false;
-    bool bFishHit = false;
+    FVector ReelTarget;
 
-    UPROPERTY(EditAnywhere, Category = "Fishing")
-    TSubclassOf<AActor> WaterActorClass;
+    // íÔçRä÷åW
+    UPROPERTY(EditAnywhere, Category = "Physics")
+    float AirResistance = 0.0001f;
 
-    UPROPERTY(EditAnywhere, Category = "Fishing")
-    float FishHitChancePerSecond = 0.5f;
+    UPROPERTY(EditAnywhere, Category = "Physics")
+    float MaxDistance = 800.f;
+
+    UPROPERTY(EditAnywhere, Category = "Physics")
+    float DistanceDampingFactor = 0.5f;
+
+    // ÉäÅ[ÉãÇÃóÕÇÃã≠Ç≥
+    UPROPERTY(EditAnywhere, Category = "Reeling")
+    float ReelForce = 3000.f;
 };

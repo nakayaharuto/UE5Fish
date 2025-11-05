@@ -1,6 +1,7 @@
 ﻿#include "LureActor.h"
 #include "Components/StaticMeshComponent.h"
 #include "Kismet/GameplayStatics.h"
+#include "Kismet/KismetMathLibrary.h"
 
 ALureActor::ALureActor()
 {
@@ -8,9 +9,12 @@ ALureActor::ALureActor()
 
     Mesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Mesh"));
     RootComponent = Mesh;
-    Mesh->SetSimulatePhysics(false);
-    Mesh->SetMobility(EComponentMobility::Movable);
+
+    Mesh->SetSimulatePhysics(true);
     Mesh->SetCollisionProfileName(TEXT("PhysicsActor"));
+    Mesh->SetMassOverrideInKg(NAME_None, 0.2f);
+    Mesh->SetLinearDamping(0.05f);
+    Mesh->SetAngularDamping(0.05f);
 }
 
 void ALureActor::BeginPlay()
@@ -18,63 +22,96 @@ void ALureActor::BeginPlay()
     Super::BeginPlay();
 }
 
+void ALureActor::ResetLure()
+{
+    bIsLaunched = false;
+    bIsBeingReeled = false;
+    LaunchTime = 0.f;
+
+    Mesh->SetSimulatePhysics(true);
+    Mesh->SetPhysicsLinearVelocity(FVector::ZeroVector);
+    Mesh->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
+
+    // プレイヤーの竿の先端（初期位置）に戻す
+    if (AActor* OwnerActor = GetOwner())
+    {
+        FVector SocketLoc = OwnerActor->GetActorLocation();
+        SetActorLocation(SocketLoc);
+    }
+}
+
 void ALureActor::LaunchLure(const FVector& InTarget, float InSpeed)
 {
     StartLocation = GetActorLocation();
-    TargetLocation = InTarget;
-    Speed = InSpeed;
-    bIsFlying = true;
-    bHitWater = false;
-    bFishHit = false;
+    LaunchDirection = (InTarget - StartLocation).GetSafeNormal();
+    LaunchSpeed = InSpeed;
+
+    Mesh->SetSimulatePhysics(true);
+    Mesh->SetPhysicsLinearVelocity(FVector::ZeroVector);
+    Mesh->AddImpulse(LaunchDirection * LaunchSpeed);
+
+    LaunchTime = 0.f;
+    bIsLaunched = true;
+    bIsBeingReeled = false;
 }
 
 void ALureActor::Tick(float DeltaTime)
 {
     Super::Tick(DeltaTime);
-    FVector CurrentPos = GetActorLocation();
-    UE_LOG(LogTemp, Log, TEXT("Lure Position: X=%.2f Y=%.2f Z=%.2f"),
-        CurrentPos.X, CurrentPos.Y, CurrentPos.Z);
-    // 巻き取り中はALureActor側で移動させない
-    if (!bIsFlying || bIsBeingReeled) return;
+    if (!Mesh) return;
 
-    FVector Dir = (TargetLocation - GetActorLocation()).GetSafeNormal();
-    FVector NewPos = GetActorLocation() + Dir * Speed * DeltaTime;
+    LaunchTime += DeltaTime;
 
-    float DistanceTravelled = FVector::Dist(StartLocation, NewPos);
-    if (DistanceTravelled >= MaxDistance)
+    FVector Velocity = Mesh->GetPhysicsLinearVelocity();
+
+    // ====== 飛行中の減速を時間で制御 ======
+    if (bIsLaunched && !bIsBeingReeled)
     {
-        SetActorLocation(TargetLocation);
-        bIsFlying = false;
-        return;
-    }
+        // 経過時間に応じて空気抵抗を緩やかに増やす
+        float DynamicResistance = FMath::Clamp(AirResistance + LaunchTime * 0.005f, 0.f, 0.05f);
 
-    // 水判定
-    if (!bHitWater && WaterActorClass)
-    {
-        TArray<AActor*> WaterActors;
-        UGameplayStatics::GetAllActorsOfClass(GetWorld(), WaterActorClass, WaterActors);
-        for (AActor* Water : WaterActors)
+        FVector DampedVel = Velocity * (1.f - DynamicResistance);
+        Mesh->SetPhysicsLinearVelocity(DampedVel);
+
+        // 一定距離でブレーキを少し強める
+        float Distance = FVector::Distance(StartLocation, GetActorLocation());
+        if (Distance > MaxDistance)
         {
-            if (Water && GetActorLocation().Z <= Water->GetActorLocation().Z + 10.f)
-            {
-                bHitWater = true;
-                bIsFlying = false;
-                OnHitWater.Broadcast();
-                break;
-            }
+            FVector Reduced = Velocity * 0.95f; // ゆるくブレーキ
+            Mesh->SetPhysicsLinearVelocity(Reduced);
+            bIsLaunched = false;
         }
     }
 
-    // 魚ヒット判定
-    if (!bFishHit)
+    // ====== リール中 ======
+    if (bIsBeingReeled)
     {
-        float Chance = FishHitChancePerSecond * DeltaTime;
-        if (FMath::FRandRange(0.f, 100.f) < Chance)
-        {
-            bFishHit = true;
-            OnFishHit.Broadcast();
-        }
-    }
+        FVector DirToRod = (ReelTarget - GetActorLocation());
+        float Dist = DirToRod.Length();
 
-    SetActorLocation(NewPos);
+        if (Dist < 50.f)
+        {
+            // 竿先付近で停止＆位置スナップ（消さない！）
+            FVector SnapPos = ReelTarget - DirToRod.GetSafeNormal() * 10.f;
+            Mesh->SetPhysicsLinearVelocity(FVector::ZeroVector);
+            SetActorLocation(SnapPos);
+            return;
+        }
+
+        DirToRod.Normalize();
+        float Attenuation = FMath::Clamp(Dist / MaxDistance, 0.1f, 1.f);
+        Mesh->AddForce(DirToRod * ReelForce * Attenuation);
+    }
+}
+
+void ALureActor::SetBeingReeled(bool bReeling, const FVector& ReelTargetIn)
+{
+    bIsBeingReeled = bReeling;
+    ReelTarget = ReelTargetIn;
+
+    if (bReeling)
+    {
+        // リール開始時に一瞬抵抗をリセット
+        Mesh->SetLinearDamping(0.1f);
+    }
 }

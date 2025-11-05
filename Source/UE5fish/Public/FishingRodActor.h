@@ -7,54 +7,74 @@
 
 class ALureActor;
 class AFishActor;
-class UNiagaraSystem;
-class UFishingWidget;
 
 UCLASS()
 class UE5FISH_API AFishingRodActor : public AActor
 {
     GENERATED_BODY()
+
 public:
     AFishingRodActor();
-
     virtual void Tick(float DeltaTime) override;
     virtual void BeginPlay() override;
+    void ResetRodState();//釣り竿の状態リセット
 
-    void ShowCastTarget(const FVector& Location);
-    void CastToLocation(const FVector& InTargetLocation);
-    void ResetLure();
-    void SpawnCaughtFish();
-
-    UFUNCTION()
-    void StartReel();
-
-    UFUNCTION()
-    void StopReel();
-
-
-protected:
+    /** 竿メッシュ */
     UPROPERTY(VisibleAnywhere)
     USkeletalMeshComponent* RodMesh;
 
-    UPROPERTY(EditDefaultsOnly, Category = "Fishing")
-    TSubclassOf<ALureActor> LureClass;
+    /** ケーブルで糸を可視化 */
+    UPROPERTY(VisibleAnywhere)
+    UCableComponent* LineCable;
 
+    /** 現在のルアー */
     UPROPERTY()
     ALureActor* CurrentLure;
 
+    /** 現在釣れた魚 */
     UPROPERTY()
     AFishActor* CaughtFish;
 
-    UPROPERTY(EditDefaultsOnly, Category = "Fishing")
+    /** ルアーのクラス */
+    UPROPERTY(EditAnywhere)
+    TSubclassOf<ALureActor> LureClass;
+
+    /** 魚クラス */
+    UPROPERTY(EditAnywhere)
     TSubclassOf<AFishActor> FishClass;
 
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Fishing")
-    UCableComponent* LineCable;
+    /** ルアーをキャスト */
+    void CastToLocation(const FVector& TargetLocation);
 
+    /** 巻き取り開始・停止 */
+    UFUNCTION()
+    void StartReel();
+    UFUNCTION()
+    void StopReel();
+
+    /** ヒット・キャッチ処理 */
+    void SpawnCaughtFish();
+    void ResetLure();
+
+
+protected:
+    /** 状態フラグ */
     bool bIsCasting = false;
     bool bIsReeling = false;
     bool bIsFishBiting = false;
     bool bFishCaught = false;
+    bool bIsCharging = false;
+
+
+    /** リール進行度 */
     float FishReelProgress = 0.f;
-    float ReelRequired = 1.f;
+
+    /** キャストスピード */
+    UPROPERTY(EditAnywhere)
+    float CastSpeed = 1500.f;
+    float CastCharge = 0.f;                 // 現在のチャージ量（0..MaxCastCharge）
+    UPROPERTY(EditAnywhere, Category = "Casting")
+    float MaxCastCharge = 3.0f;            // 最大チャージ時間（秒など）
+    UPROPERTY(EditAnywhere, Category = "Casting")
+    float CastChargeRate = 1.0f;           // チャージ速度（増加率）
 };
