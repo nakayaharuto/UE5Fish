@@ -19,6 +19,7 @@ public:
 
     void LaunchLure(const FVector& InTarget, float InSpeed);
     void SetBeingReeled(bool bReeling, const FVector& ReelTarget);
+    void NotifyActorBeginOverlap(AActor* OtherActor);
     void ResetLure();
 
     UPROPERTY(BlueprintAssignable)
@@ -27,12 +28,14 @@ public:
     UPROPERTY(BlueprintAssignable)
     FLureEvent OnFishHit;
 
+    UPROPERTY(VisibleAnywhere)
+    UStaticMeshComponent* Mesh;
+
 protected:
     virtual void BeginPlay() override;
 
     void UpdateFishingLine(const FVector& Start, const FVector& End);
-    UPROPERTY(VisibleAnywhere)
-    UStaticMeshComponent* Mesh;
+
 
     // ìäÇ∞ÇΩèÓïÒ
     FVector StartLocation;

@@ -12,6 +12,7 @@ class USpringArmComponent;
 class UCameraComponent;
 class UInputMappingContext;
 class UInputAction;
+class ALureActor;
 struct FInputActionValue;
 class AFishingRodActor;
 
@@ -49,6 +50,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Fishing, meta = (AllowPrivateAccess = "true"))
 	AFishingRodActor* FishingRod;
 
+	//ルアー
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Fishing, meta = (AllowPrivateAccess = "true"))
+	ALureActor* LureActor;
+
 	//アクション
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* FishingAction;
@@ -56,6 +61,9 @@ public:
 	//竿アクション
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Fishing, meta = (AllowPrivateAccess = "true"))
 	TSubclassOf<class AFishingRodActor> FishingRodClass;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Fishing")
+	FVector2D CurrentInputDirection;
 
 	// 新アクション
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
@@ -118,8 +126,7 @@ protected:
 	bool bIsFishing = false;
 
 public:	
-	// Called every frame
-	//virtual void Tick(float DeltaTime) override;
+	bool bIsReelingFish = false;
 protected:
 
 	//virtual void NotifyControllerChanged() override;

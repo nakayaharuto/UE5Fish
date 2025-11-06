@@ -1,4 +1,5 @@
 ﻿#include "LureActor.h"
+#include "FishActor.h"
 #include "MyCharacter/MyCharacter.h"
 #include "FishingRodActor.h"
 #include "Components/StaticMeshComponent.h"
@@ -168,6 +169,18 @@ void ALureActor::SetBeingReeled(bool bReeling, const FVector& ReelTargetIn)
     {
         // リール開始時に一瞬抵抗をリセット
         Mesh->SetLinearDamping(0.1f);
+    }
+}
+
+void ALureActor::NotifyActorBeginOverlap(AActor* OtherActor)
+{
+    Super::NotifyActorBeginOverlap(OtherActor);
+
+    AFishActor* Fish = Cast<AFishActor>(OtherActor);
+    if (Fish)
+    {
+        Fish->StartFight(this);
+        OnFishHit.Broadcast();
     }
 }
 

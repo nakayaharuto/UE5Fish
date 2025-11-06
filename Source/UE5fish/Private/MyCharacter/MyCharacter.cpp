@@ -7,6 +7,8 @@
 #include "InputActionValue.h"
 #include "FishingRodActor.h"
 #include "BoatPawn.h"
+#include "LureActor.h"
+#include "FishActor.h"
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/PlayerController.h"
 #include "Components/SkeletalMeshComponent.h"
@@ -78,13 +80,6 @@ void AMyCharacter::BeginPlay()
 
 }
 
-void AMyCharacter::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
-	
-	
-}
-
 //////////////////////////////////////////////////////////////////////////
 // 入力処理
 
@@ -153,6 +148,34 @@ void AMyCharacter::InteractWithBoat(const FInputActionValue& Value)
 
 //////////////////////////////////////////////////////////////////////////
 // 釣り関連
+
+void AMyCharacter::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+
+	if (bIsReelingFish && LureActor)
+	{
+		// 魚の方向
+		FVector FishDir = (LureActor->GetActorLocation() - GetActorLocation()).GetSafeNormal();
+
+		// プレイヤーがスティックを倒した方向を取得
+		FVector2D StickInput = CurrentInputDirection; // ← InputAxis で更新
+		FVector PlayerTiltDir = FVector(StickInput.X, StickInput.Y, 0.f).GetSafeNormal();
+
+		// 竿を傾ける
+		if (!PlayerTiltDir.IsNearlyZero())
+		{
+			// 竿の回転制御
+			FRotator TargetRot = FRotationMatrix::MakeFromX(PlayerTiltDir * -1).Rotator();
+			FishingRod->SetActorRotation(FMath::RInterpTo(FishingRod->GetActorRotation(), TargetRot, DeltaTime, 3.f));
+		}
+
+		// 魚との張力を物理的に再現
+		FVector TensionDir = (GetActorLocation() - LureActor->GetActorLocation()).GetSafeNormal();
+		float TensionStrength = FVector::DotProduct(TensionDir, -FishDir); // 魚と逆向きなら強い
+		LureActor->Mesh->AddForce(TensionDir * TensionStrength * 2500.f);
+	}
+}
 
 void AMyCharacter::ToggleEquipRod(const FInputActionValue& Value)
 {

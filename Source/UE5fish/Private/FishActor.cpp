@@ -19,3 +19,35 @@ void AFishActor::BeginPlay()
     FVector Impulse = UKismetMathLibrary::RandomUnitVector() * 150.f + FVector(0, 0, 250.f);
     Mesh->AddImpulse(Impulse);
 }
+
+void AFishActor::StartFight(AActor* TargetLure)
+{
+    bIsFighting = true;
+    LureTraget = TargetLure;
+}
+
+void AFishActor::StopFight()
+{
+    bIsFighting = false;
+    LureTraget = nullptr;
+}
+
+void AFishActor::Tick(float DeletaTime)
+{
+    Super::Tick(DeletaTime);
+
+    if (!bIsFighting || !LureTraget)return;
+
+    FightTimer += DeletaTime;
+
+    // ˆê’èŽüŠú‚Å•ûŒü‚ðƒ‰ƒ“ƒ_ƒ€‚É•Ï‚¦‚é
+    if (FightTimer > 1.2f)
+    {
+        FVector RandomDir = UKismetMathLibrary::RandomUnitVector();
+        RandomDir.Z = 0.f; // …•½•ûŒü’†S
+        FVector Force = RandomDir * 1500.f;
+
+        Mesh->AddForce(Force);
+        FightTimer = 0.f;
+    }
+}
