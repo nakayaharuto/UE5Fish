@@ -4,6 +4,8 @@
 #include "GameFramework/Actor.h"
 #include "LureActor.generated.h"
 
+class AMyCharacter;
+
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FLureEvent);
 
 UCLASS()
@@ -28,6 +30,7 @@ public:
 protected:
     virtual void BeginPlay() override;
 
+    void UpdateFishingLine(const FVector& Start, const FVector& End);
     UPROPERTY(VisibleAnywhere)
     UStaticMeshComponent* Mesh;
 

@@ -1,4 +1,6 @@
 ﻿#include "LureActor.h"
+#include "MyCharacter/MyCharacter.h"
+#include "FishingRodActor.h"
 #include "Components/StaticMeshComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetMathLibrary.h"
@@ -9,6 +11,11 @@ ALureActor::ALureActor()
 
     Mesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Mesh"));
     RootComponent = Mesh;
+    Mesh->BodyInstance.bUseCCD = true;
+
+    Mesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+    Mesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Block);
+    Mesh->SetCollisionObjectType(ECC_PhysicsBody);
 
     Mesh->SetSimulatePhysics(true);
     Mesh->SetCollisionProfileName(TEXT("PhysicsActor"));
@@ -69,6 +76,23 @@ void ALureActor::Tick(float DeltaTime)
     Super::Tick(DeltaTime);
     if (!Mesh) return;
 
+    // オーナーが竿（キャラクター）なら
+    if (AActor* OwnerActor = GetOwner())
+    {
+        FVector RodTipLocation = OwnerActor->GetActorLocation(); // ← 本来は「竿先ソケット」の位置
+        float CurrentLineLength = FVector::Distance(RodTipLocation, GetActorLocation());
+
+        // 糸の長さを保存して他で使えるように
+        CurrentLineLength = FMath::Clamp(CurrentLineLength, 0.f, MaxDistance);
+
+        // デバッグ表示（長さ確認用）
+        GEngine->AddOnScreenDebugMessage(-1, 0.f, FColor::Cyan,
+            FString::Printf(TEXT("Line Length: %.2f"), CurrentLineLength));
+
+        // 糸をスプラインやNiagaraに反映したい場合はここで更新
+        UpdateFishingLine(RodTipLocation, GetActorLocation());
+    }
+
     LaunchTime += DeltaTime;
 
     FVector Velocity = Mesh->GetPhysicsLinearVelocity();
@@ -100,11 +124,32 @@ void ALureActor::Tick(float DeltaTime)
         FVector DirToRod = (ReelTarget - GetActorLocation());
         float Dist = DirToRod.Length();
 
-        if (Dist < 50.f)
+        if (Dist < 80.f)
         {
+            // 🎣 ルアーが竿先に戻ったとき
             FVector SnapPos = ReelTarget - DirToRod.GetSafeNormal() * 10.f;
-            Mesh->SetPhysicsLinearVelocity(FVector::ZeroVector);
             SetActorLocation(SnapPos);
+            Mesh->SetPhysicsLinearVelocity(FVector::ZeroVector);
+            Mesh->SetSimulatePhysics(false);
+            Mesh->SetVisibility(false);
+
+            // 以後リール処理を止める
+            bIsBeingReeled = false;
+            bIsLaunched = false;
+            
+            // 🎣 釣り竿初期化呼び出し
+            if (AActor* OwnerActor = GetOwner())
+            {
+                // プレイヤーキャラクターをキャスト
+                if (AMyCharacter* MyChar = Cast<AMyCharacter>(OwnerActor))
+                {
+                    if (MyChar->FishingRod)
+                    {
+                        Mesh->SetSimulatePhysics(false);
+                        Mesh->SetVisibility(false);
+                    }
+                }
+            }
             return;
         }
 
@@ -124,4 +169,9 @@ void ALureActor::SetBeingReeled(bool bReeling, const FVector& ReelTargetIn)
         // リール開始時に一瞬抵抗をリセット
         Mesh->SetLinearDamping(0.1f);
     }
+}
+
+void ALureActor::UpdateFishingLine(const FVector& Start, const FVector& End)
+{
+    // ここが空でもいい（実装だけしておく）
 }
