@@ -53,6 +53,15 @@ void ALureActor::LaunchLure(const FVector& InTarget, float InSpeed)
     LaunchTime = 0.f;
     bIsLaunched = true;
     bIsBeingReeled = false;
+
+    // 空気抵抗は投げてからしばらくOFFにする
+    bAirResistanceActive = false;
+    GetWorld()->GetTimerManager().SetTimer(AirResistTimer, this, &ALureActor::EnableAirResistance, 0.3f, false);
+}
+
+void ALureActor::EnableAirResistance()
+{
+    bAirResistanceActive = true;
 }
 
 void ALureActor::Tick(float DeltaTime)
@@ -64,14 +73,16 @@ void ALureActor::Tick(float DeltaTime)
 
     FVector Velocity = Mesh->GetPhysicsLinearVelocity();
 
-    // ====== 飛行中の減速を時間で制御 ======
+    // ====== 飛行中 ======
     if (bIsLaunched && !bIsBeingReeled)
     {
-        // 経過時間に応じて空気抵抗を緩やかに増やす
-        float DynamicResistance = FMath::Clamp(AirResistance + LaunchTime * 0.005f, 0.f, 0.05f);
-
-        FVector DampedVel = Velocity * (1.f - DynamicResistance);
-        Mesh->SetPhysicsLinearVelocity(DampedVel);
+        if (bAirResistanceActive) // ← 0.3秒経過後のみ抵抗を適用
+        {
+            // 経過時間に応じて空気抵抗を緩やかに増やす
+            float DynamicResistance = FMath::Clamp(AirResistance + (LaunchTime - 0.3f) * 0.002f, 0.f, 0.05f);
+            FVector DampedVel = Velocity * (1.f - DynamicResistance);
+            Mesh->SetPhysicsLinearVelocity(DampedVel);
+        }
 
         // 一定距離でブレーキを少し強める
         float Distance = FVector::Distance(StartLocation, GetActorLocation());
@@ -91,7 +102,6 @@ void ALureActor::Tick(float DeltaTime)
 
         if (Dist < 50.f)
         {
-            // 竿先付近で停止＆位置スナップ（消さない！）
             FVector SnapPos = ReelTarget - DirToRod.GetSafeNormal() * 10.f;
             Mesh->SetPhysicsLinearVelocity(FVector::ZeroVector);
             SetActorLocation(SnapPos);

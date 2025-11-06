@@ -37,22 +37,27 @@ protected:
     float LaunchSpeed;
     float LaunchTime = 0.f;  // “Š‚°‚Ä‚©‚ç‚ÌŒo‰ßŠÔ
     bool bIsLaunched = false;
+    FTimerHandle AirResistTimer;
 
     // ƒŠ[ƒ‹’†
     bool bIsBeingReeled = false;
+    bool bAirResistanceActive = false;
     FVector ReelTarget;
 
     // ’ïRŠÖŒW
     UPROPERTY(EditAnywhere, Category = "Physics")
-    float AirResistance = 0.0001f;
+    float AirResistance = 0.05f;//“Š‚°n‚ß‚Ì’ïR
 
     UPROPERTY(EditAnywhere, Category = "Physics")
-    float MaxDistance = 800.f;
+    float MaxDistance = 3000.f;//”ò‹——£‚ÌŒÀŠE’l
 
     UPROPERTY(EditAnywhere, Category = "Physics")
-    float DistanceDampingFactor = 0.5f;
+    float DistanceDampingFactor = 0.4f;//’ïR‚ÌŒÀŠE’l
 
     // ƒŠ[ƒ‹‚Ì—Í‚Ì‹­‚³
     UPROPERTY(EditAnywhere, Category = "Reeling")
     float ReelForce = 3000.f;
+
+    UFUNCTION()
+    void EnableAirResistance();
 };
