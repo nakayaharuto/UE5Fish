@@ -77,4 +77,12 @@ protected:
     float MaxCastCharge = 3.0f;            // 最大チャージ時間（秒など）
     UPROPERTY(EditAnywhere, Category = "Casting")
     float CastChargeRate = 1.0f;           // チャージ速度（増加率）
+
+private:
+    FTimerHandle FishBiteTimerHandle;
+
+    void StartFishBastTimer();
+    void OnFishBite();          // 実際のヒット発生
+    void OnFishCaught();        // 巻き上げ完了時
+
 };

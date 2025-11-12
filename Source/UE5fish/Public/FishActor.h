@@ -9,22 +9,21 @@ class UE5FISH_API AFishActor : public AActor
 {
     GENERATED_BODY()
 
+    //ãõÇÃÉÅÉbÉVÉÖ
+    UPROPERTY(VisibleAnywhere)
+    UStaticMeshComponent* Mesh;
+
 public:
     AFishActor();
 
     virtual void Tick(float DeletaTime) override;
 
-    void StartFight(AActor* TargetLure);//ì¶Ç∞énÇﬂ
-    void StopFight();
+    void ShowFish();
+    void HideFish();
 
 protected:
     virtual void BeginPlay() override;
 
-    UPROPERTY(VisibleAnywhere)
-    UStaticMeshComponent* Mesh;
-
 private:
-    bool bIsFighting = false;
-    AActor* LureTraget = nullptr;
-    float FightTimer = 0.f;
+    FTimerHandle HideTimerHandle;
 };

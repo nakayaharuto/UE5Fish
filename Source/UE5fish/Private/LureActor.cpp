@@ -179,7 +179,7 @@ void ALureActor::NotifyActorBeginOverlap(AActor* OtherActor)
     AFishActor* Fish = Cast<AFishActor>(OtherActor);
     if (Fish)
     {
-        Fish->StartFight(this);
+        //Fish->StartFight(this);
         OnFishHit.Broadcast();
     }
 }
