@@ -4,6 +4,9 @@ PBGet/*-*
 # Prerequisites
 *.d
 
+# Unreal Fab assets (Git管理外)
+Content/FabAssets/
+
 # Compiled Object files
 *.slo
 *.lo
