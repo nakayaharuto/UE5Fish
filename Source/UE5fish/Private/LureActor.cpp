@@ -3,8 +3,10 @@
 #include "MyCharacter/MyCharacter.h"
 #include "FishingRodActor.h"
 #include "Components/StaticMeshComponent.h"
+#include "Components/CableComponent.h"
 #include "Kismet/GameplayStatics.h"
-#include "Kismet/KismetMathLibrary.h"
+#include "TimerManager.h"
+#include "Engine/World.h"
 
 ALureActor::ALureActor()
 {
@@ -23,6 +25,14 @@ ALureActor::ALureActor()
     Mesh->SetMassOverrideInKg(NAME_None, 0.2f);
     Mesh->SetLinearDamping(0.05f);
     Mesh->SetAngularDamping(0.05f);
+
+    // Cable を内部にも持たせておく（視認用、ただし竿の LineCable を使うのが最優先）
+    Cable = CreateDefaultSubobject<UCableComponent>(TEXT("Cable"));
+    Cable->SetupAttachment(Mesh);
+    Cable->bAttachEnd = true;
+    Cable->CableLength = 200.f;
+    Cable->NumSegments = 12;
+    Cable->SetVisibility(false); // 初期は竿側の Cable を使う
 }
 
 void ALureActor::BeginPlay()
@@ -30,41 +40,32 @@ void ALureActor::BeginPlay()
     Super::BeginPlay();
 }
 
-void ALureActor::ResetLure()
-{
-    bIsLaunched = false;
-    bIsBeingReeled = false;
-    LaunchTime = 0.f;
-
-    Mesh->SetSimulatePhysics(true);
-    Mesh->SetPhysicsLinearVelocity(FVector::ZeroVector);
-    Mesh->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
-
-    // プレイヤーの竿の先端（初期位置）に戻す
-    if (AActor* OwnerActor = GetOwner())
-    {
-        FVector SocketLoc = OwnerActor->GetActorLocation();
-        SetActorLocation(SocketLoc);
-    }
-}
-
 void ALureActor::LaunchLure(const FVector& InTarget, float InSpeed)
 {
+    // 方向をまっすぐに
     StartLocation = GetActorLocation();
     LaunchDirection = (InTarget - StartLocation).GetSafeNormal();
     LaunchSpeed = InSpeed;
 
+    // 少し控えめに投げる（見た目調整）
     Mesh->SetSimulatePhysics(true);
     Mesh->SetPhysicsLinearVelocity(FVector::ZeroVector);
-    Mesh->AddImpulse(LaunchDirection * LaunchSpeed);
+    Mesh->AddImpulse(LaunchDirection * LaunchSpeed, NAME_None, true);
 
     LaunchTime = 0.f;
     bIsLaunched = true;
     bIsBeingReeled = false;
-
-    // 空気抵抗は投げてからしばらくOFFにする
     bAirResistanceActive = false;
-    GetWorld()->GetTimerManager().SetTimer(AirResistTimer, this, &ALureActor::EnableAirResistance, 0.3f, false);
+
+    // 一定時間後に空気抵抗を有効にする（既存の挙動を踏襲）
+    GetWorld()->GetTimerManager().SetTimer(AirResistTimer, this, &ALureActor::EnableAirResistance, 0.25f, false);
+
+    // ランダムヒットタイマー（既存スクリプトの意図を残す）
+    float HitDelay = FMath::FRandRange(HitDelayRange.X, HitDelayRange.Y);
+    GetWorld()->GetTimerManager().SetTimer(HitTimerHandle, this, &ALureActor::SpawnHitFish, HitDelay, false);
+
+    // ルアーを生成した FishingRod 側があれば、竿の LineCable をこのルアーに繋ぐ処理は FishingRod 側で呼ぶこと。
+    // （AFishingRodActor::CastToLocation で LineCable->SetAttachEndTo(CurrentLure, NAME_None) を追加推奨）
 }
 
 void ALureActor::EnableAirResistance()
@@ -72,92 +73,41 @@ void ALureActor::EnableAirResistance()
     bAirResistanceActive = true;
 }
 
-void ALureActor::Tick(float DeltaTime)
+void ALureActor::EndCast()
 {
-    Super::Tick(DeltaTime);
-    if (!Mesh) return;
-
-    // オーナーが竿（キャラクター）なら
-    if (AActor* OwnerActor = GetOwner())
+    // 投げ終了（物理OFF、速度を適度に落とす）
+    bIsLaunched = false;
+    if (Mesh)
     {
-        FVector RodTipLocation = OwnerActor->GetActorLocation(); // ← 本来は「竿先ソケット」の位置
-        float CurrentLineLength = FVector::Distance(RodTipLocation, GetActorLocation());
-
-        // 糸の長さを保存して他で使えるように
-        CurrentLineLength = FMath::Clamp(CurrentLineLength, 0.f, MaxDistance);
-
-        // デバッグ表示（長さ確認用）
-        GEngine->AddOnScreenDebugMessage(-1, 0.f, FColor::Cyan,
-            FString::Printf(TEXT("Line Length: %.2f"), CurrentLineLength));
-
-        // 糸をスプラインやNiagaraに反映したい場合はここで更新
-        UpdateFishingLine(RodTipLocation, GetActorLocation());
+        FVector Vel = Mesh->GetPhysicsLinearVelocity();
+        Vel *= 0.4f; // 減速
+        Mesh->SetPhysicsLinearVelocity(Vel);
+        Mesh->SetSimulatePhysics(false);
     }
 
-    LaunchTime += DeltaTime;
+    // Broadcast 水面ヒットの代替イベント（必要なら）
+    OnHitWater.Broadcast();
+}
 
-    FVector Velocity = Mesh->GetPhysicsLinearVelocity();
+void ALureActor::SpawnHitFish()
+{
+    if (HitFish) return; // 既に魚がいるならスキップ
 
-    // ====== 飛行中 ======
-    if (bIsLaunched && !bIsBeingReeled)
+    // ルアーの近くに魚をスポーンして見せる
+    FVector SpawnLoc = GetActorLocation() + FVector(FMath::FRandRange(60.f, 140.f), 0.f, -20.f);
+    FActorSpawnParameters Params;
+    Params.Owner = GetOwner(); // オーナーは竿のはず
+    UWorld* W = GetWorld();
+    if (!W) return;
+
+    HitFish = W->SpawnActor<AFishActor>(AFishActor::StaticClass(), SpawnLoc, FRotator::ZeroRotator, Params);
+    if (HitFish)
     {
-        if (bAirResistanceActive) // ← 0.3秒経過後のみ抵抗を適用
-        {
-            // 経過時間に応じて空気抵抗を緩やかに増やす
-            float DynamicResistance = FMath::Clamp(AirResistance + (LaunchTime - 0.3f) * 0.002f, 0.f, 0.05f);
-            FVector DampedVel = Velocity * (1.f - DynamicResistance);
-            Mesh->SetPhysicsLinearVelocity(DampedVel);
-        }
-
-        // 一定距離でブレーキを少し強める
-        float Distance = FVector::Distance(StartLocation, GetActorLocation());
-        if (Distance > MaxDistance)
-        {
-            FVector Reduced = Velocity * 0.95f; // ゆるくブレーキ
-            Mesh->SetPhysicsLinearVelocity(Reduced);
-            bIsLaunched = false;
-        }
+        HitFish->ShowFish(); // ShowFish() は既存実装を利用
     }
 
-    // ====== リール中 ======
-    if (bIsBeingReeled)
-    {
-        FVector DirToRod = (ReelTarget - GetActorLocation());
-        float Dist = DirToRod.Length();
-
-        if (Dist < 80.f)
-        {
-            // 🎣 ルアーが竿先に戻ったとき
-            FVector SnapPos = ReelTarget - DirToRod.GetSafeNormal() * 10.f;
-            SetActorLocation(SnapPos);
-            Mesh->SetPhysicsLinearVelocity(FVector::ZeroVector);
-            Mesh->SetSimulatePhysics(false);
-            Mesh->SetVisibility(false);
-
-            // 以後リール処理を止める
-            bIsBeingReeled = false;
-            bIsLaunched = false;
-            
-            // 🎣 釣り竿初期化呼び出し
-            if (AActor* OwnerActor = GetOwner())
-            {
-                // プレイヤーキャラクターをキャスト
-                if (AMyCharacter* MyChar = Cast<AMyCharacter>(OwnerActor))
-                {
-                    if (MyChar->FishingRod)
-                    {
-                        Mesh->SetSimulatePhysics(false);
-                        Mesh->SetVisibility(false);
-                    }
-                }
-            }
-            return;
-        }
-
-        DirToRod.Normalize();
-        float Attenuation = FMath::Clamp(Dist / MaxDistance, 0.1f, 1.f);
-        Mesh->AddForce(DirToRod * ReelForce * Attenuation);
-    }
+    // 外部で検知したい場合向けにデリゲート発火
+    OnFishHit.Broadcast();
 }
 
 void ALureActor::SetBeingReeled(bool bReeling, const FVector& ReelTargetIn)
@@ -165,10 +115,53 @@ void ALureActor::SetBeingReeled(bool bReeling, const FVector& ReelTargetIn)
     bIsBeingReeled = bReeling;
     ReelTarget = ReelTargetIn;
 
-    if (bReeling)
+    if (bIsBeingReeled)
     {
-        // リール開始時に一瞬抵抗をリセット
-        Mesh->SetLinearDamping(0.1f);
+        // リール開始時は物理OFFして自分で移動させる（一定速度）
+        if (Mesh) Mesh->SetSimulatePhysics(false);
+        // Cable は竿側で終端がこのアクターに繋がれていれば見た目は保たれる
+    }
+    else
+    {
+        // リール停止：スピードを一度リセット
+        if (Mesh)
+        {
+            Mesh->SetPhysicsLinearVelocity(FVector::ZeroVector);
+            Mesh->SetSimulatePhysics(false);
+        }
+    }
+}
+
+void ALureActor::ResetLure()
+{
+    // ルアーを竿先に戻し、状態を初期化
+    bIsLaunched = false;
+    bIsBeingReeled = false;
+    LaunchTime = 0.f;
+
+    if (Mesh)
+    {
+        Mesh->SetSimulatePhysics(false);
+        Mesh->SetPhysicsLinearVelocity(FVector::ZeroVector);
+        Mesh->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
+        Mesh->SetVisibility(true);
+    }
+
+    // 魚がいたら消す（今回の優先は表示→消去）
+    if (HitFish)
+    {
+        HitFish->Destroy();
+        HitFish = nullptr;
+    }
+
+    // タイマークリア
+    GetWorld()->GetTimerManager().ClearTimer(HitTimerHandle);
+    GetWorld()->GetTimerManager().ClearTimer(AirResistTimer);
+
+    // 所有者の竿があれば初期化をお願いする（Owner は AFishingRodActor）
+    if (AFishingRodActor* Rod = Cast<AFishingRodActor>(GetOwner()))
+    {
+        Rod->ResetRodState();
     }
 }
 
@@ -176,15 +169,99 @@ void ALureActor::NotifyActorBeginOverlap(AActor* OtherActor)
 {
     Super::NotifyActorBeginOverlap(OtherActor);
 
+    // もし魚アクターとぶつかったら（既存の挙動を踏襲）
     AFishActor* Fish = Cast<AFishActor>(OtherActor);
     if (Fish)
     {
-        //Fish->StartFight(this);
+        // 外部に発火（例えば竿側も Bind しているなら反応する）
         OnFishHit.Broadcast();
+
+        // 表示は FishingRod / SpawnHitFish を優先してるのでここは軽めに扱う
+        // 例えば魚にアタックさせる等の拡張はここに追加
+    }
+}
+
+void ALureActor::ReelStep(float DeltaTime)
+{
+    if (!bIsBeingReeled) return;
+
+    FVector Current = GetActorLocation();
+    FVector Dir = (ReelTarget - Current);
+    float Dist = Dir.Size();
+    if (Dist <= ReelArrivalThreshold)
+    {
+        // 竿に到着
+        SetActorLocation(ReelTarget);
+        bIsBeingReeled = false;
+
+        // 魚がついていれば消す（まずは見た目優先）
+        if (HitFish)
+        {
+            HitFish->Destroy();
+            HitFish = nullptr;
+        }
+
+        // 竿の初期化を呼ぶ（所有者が竿のはず）
+        if (AFishingRodActor* Rod = Cast<AFishingRodActor>(GetOwner()))
+        {
+            // 竿内部でケーブルを切り離したり表示を隠したり ResetRodState をやる
+            Rod->ResetRodState();
+        }
+
+        return;
+    }
+
+    Dir /= Dist; // 正規化
+    FVector NewPos = Current + Dir * ReelSpeed * DeltaTime;
+    SetActorLocation(NewPos);
+}
+
+void ALureActor::Tick(float DeltaTime)
+{
+    Super::Tick(DeltaTime);
+
+    if (!Mesh) return;
+
+    LaunchTime += DeltaTime;
+
+    // 飛行中の処理（空気抵抗・距離/時間で投げ終了）
+    if (bIsLaunched && !bIsBeingReeled)
+    {
+        if (bAirResistanceActive)
+        {
+            FVector Vel = Mesh->GetPhysicsLinearVelocity();
+            float DynamicResistance = FMath::Clamp(AirResistance + (LaunchTime - 0.25f) * 0.002f, 0.f, 0.05f);
+            FVector DampedVel = Vel * (1.f - DynamicResistance);
+            Mesh->SetPhysicsLinearVelocity(DampedVel);
+        }
+
+        // 距離チェックまたは時間チェックで EndCast
+        float DistFromStart = FVector::Distance(StartLocation, GetActorLocation());
+        if (DistFromStart >= MaxCastDistance || LaunchTime >= MaxCastTime)
+        {
+            EndCast();
+        }
+    }
+
+    // リール処理（一定速度で移動）
+    if (bIsBeingReeled)
+    {
+        ReelStep(DeltaTime);
+    }
+
+    // 糸の見た目更新（Owner が竿なら竿先の位置を渡す）
+    if (AActor* OwnerActor = GetOwner())
+    {
+        if (AFishingRodActor* Rod = Cast<AFishingRodActor>(OwnerActor))
+        {
+            FVector RodTip = Rod->RodMesh->GetSocketLocation(TEXT("RodTip"));
+            UpdateFishingLine(RodTip, GetActorLocation());
+        }
     }
 }
 
 void ALureActor::UpdateFishingLine(const FVector& Start, const FVector& End)
 {
-    // ここが空でもいい（実装だけしておく）
+    // 現在は内部 Cable は使っていない（竿の LineCable を使う前提）。
+    // 必要ならここで Cable->SetWorldLocation、Cable->CableLength の更新を入れる。
 }

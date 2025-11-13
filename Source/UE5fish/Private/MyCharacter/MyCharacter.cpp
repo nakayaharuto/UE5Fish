@@ -95,8 +95,8 @@ void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 		if (FishingAction) EnhancedInput->BindAction(FishingAction, ETriggerEvent::Triggered, this, &AMyCharacter::ToggleEquipRod);
 		if (StartCasting) EnhancedInput->BindAction(StartCasting, ETriggerEvent::Triggered, this, &AMyCharacter::StartCastingInput);
 		if (ReleaseCasting) EnhancedInput->BindAction(ReleaseCasting, ETriggerEvent::Started, this, &AMyCharacter::ReleaseCastingInput);
-		if (StartReel) EnhancedInput->BindAction(StartReel, ETriggerEvent::Completed, this, &AMyCharacter::StartReelInput);
-		if (StopReel) EnhancedInput->BindAction(StopReel, ETriggerEvent::Triggered, this, &AMyCharacter::StopReelInput);
+		if (StartReel) EnhancedInput->BindAction(StartReel, ETriggerEvent::Triggered, this, &AMyCharacter::StartReelInput);
+		if (StopReel) EnhancedInput->BindAction(StopReel, ETriggerEvent::Completed, this, &AMyCharacter::StopReelInput);
 		//if (RodUpDownAction) EnhancedInput->BindAction(RodUpDownAction, ETriggerEvent::Triggered, this, &AMyCharacter::MoveRodUpDown);
 	}
 }

@@ -79,6 +79,12 @@ void AFishingRodActor::CastToLocation(const FVector& InTargetLocation)
         CurrentLure->SetActorHiddenInGame(false);
         CurrentLure->LaunchLure(InTargetLocation, CastSpeed);
 
+        if (UPrimitiveComponent* RootComp = Cast<UPrimitiveComponent>(CurrentLure->GetRootComponent()))
+        {
+            RootComp->SetSimulatePhysics(true); // 🌀 投げるときは物理ON
+            RootComp->AddImpulse(GetActorForwardVector() * 1000.f); // 投げる力
+        }
+        
         // デリゲート登録
         if (!CurrentLure->OnHitWater.IsBound())
             CurrentLure->OnHitWater.AddDynamic(this, &AFishingRodActor::StopReel);
@@ -105,6 +111,11 @@ void AFishingRodActor::StartReel()
 
     FVector RodTip = RodMesh->GetSocketLocation(TEXT("RodTip"));
     CurrentLure->SetBeingReeled(true, RodTip);
+
+    if (IsValid(CurrentLure))
+    {
+        CurrentLure->SetBeingReeled(true, RodTip);
+    }
 }
 
 void AFishingRodActor::StopReel()
@@ -112,6 +123,14 @@ void AFishingRodActor::StopReel()
     if (!CurrentLure || bFishCaught) return;
 
     bIsReeling = true;
+
+    if (CurrentLure)
+    {
+        if (UPrimitiveComponent* RootComp = Cast<UPrimitiveComponent>(CurrentLure->GetRootComponent()))
+        {
+            RootComp->SetSimulatePhysics(false); // 🎯 ここで物理を止める
+        }
+    }
 
     FVector RodTip = RodMesh->GetSocketLocation(TEXT("RodTip"));
     CurrentLure->SetBeingReeled(false, RodTip);
@@ -121,8 +140,7 @@ void AFishingRodActor::Tick(float DeltaTime)
 {
     Super::Tick(DeltaTime);
 
-    if (!RodMesh) return; // 念のため安全ガード
-    if (!LineCable) return; // Cableが無効なら以降スキップ
+    if (!RodMesh || !LineCable) return;
     FVector RodTip = RodMesh->GetSocketLocation(TEXT("RodTip"));
 
     // ルアーが存在しないときはCableの終端も外す
@@ -142,33 +160,36 @@ void AFishingRodActor::Tick(float DeltaTime)
         {
             float ReelSpeed = FMath::Clamp(Distance * 2.f, 300.f, 1200.f);
             FVector NewPos = FMath::VInterpTo(LurePos, RodTip, DeltaTime, ReelSpeed / FMath::Max(Distance, 1.f));
-            CurrentLure->SetActorLocation(NewPos);
+            if (IsValid(CurrentLure))
+            {
+                CurrentLure->SetActorLocation(NewPos);
+            }
         }
         else
         {
-            // 竿先に到達 → 正確に位置を合わせて停止
-            CurrentLure->SetActorLocation(RodTip);
+            if (IsValid(CurrentLure))
+            {
+                CurrentLure->SetActorLocation(RodTip);
+            }
             bIsReeling = false;
 
-            if (bIsFishBiting && CaughtFish)
+            if (bIsFishBiting && IsValid(CaughtFish))
             {
-                OnFishCaught(); // 🎣 魚ヒット時のイベント
+                OnFishCaught(); // 🎣 魚を釣り上げる処理
+            }
+
+            if (IsValid(CurrentLure))
+            {
+                CurrentLure->SetBeingReeled(false, RodTip);
             }
         }
     }
 
     // --- 🪢 ケーブル長さの追従 ---
+    if (IsValid(LineCable) && IsValid(CurrentLure))
     {
         float TargetLength = FVector::Distance(RodTip, CurrentLure->GetActorLocation());
-
-        // CableComponent が存在する限り滑らかに距離を合わせる
         LineCable->CableLength = FMath::FInterpTo(LineCable->CableLength, TargetLength, DeltaTime, 10.f);
-
-        // Cable の終端が Lure に正しく追従していないときは再設定
-        if (LineCable->GetAttachParentActor() != CurrentLure)
-        {
-            LineCable->SetAttachEndTo(CurrentLure, NAME_None);
-        }
     }
 }
 
