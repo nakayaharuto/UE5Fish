@@ -1,6 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
@@ -11,34 +9,39 @@ class ADirectionalLight;
 UCLASS()
 class UE5FISH_API ADayNightCycle : public AActor
 {
-	GENERATED_BODY()
-	
-	UPROPERTY(EditAnywhere, Category = "DayNight")
-	ADirectionalLight* SunLight;	//���z�̃��C�g
+    GENERATED_BODY()
 
-	UPROPERTY(EditAnywhere, Category = "DayNight")
-	ADirectionalLight* MoonLight;	//���̃��C�g
-
-	UPROPERTY(EditAnywhere, Category = "DayNight")
-	float DaySpeed = 0.1f;
-
-	UPROPERTY(EditAnywhere, Category = "DayNight")
-	float CurrentTime = 12.0f;
-
-public:	
-	// Sets default values for this actor's properties
-	ADayNightCycle();
+public:
+    ADayNightCycle();
 
 protected:
-	// Called when the game starts or when spawned
-	virtual void BeginPlay() override;
+    virtual void BeginPlay() override;
 
-public:	
-	// Called every frame
-	virtual void Tick(float DeltaTime) override;
+public:
+    virtual void Tick(float DeltaTime) override;
+
+    // --------------------------------------
+    // 設定項目（BPで編集可能）
+    // --------------------------------------
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "DayNight")
+    float DayStartHour = 6.0f;      // 昼の開始（6時）
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "DayNight")
+    float NightStartHour = 18.0f;   // 夜の開始（18時）
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "DayNight")
+    float TimeSpeed = 60.0f; // 1秒 = 1分（ゲーム内）
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "DayNight")
+    ADirectionalLight* SunLight;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "DayNight")
+    ADirectionalLight* MoonLight;
 
 private:
-	void UpdateSunRotion();
-	void UpdateMoonRotation();
-	void UpdateLightIntensity();
+    float CurrentTime = 12.0f; // 12:00 スタート
+
+    bool IsDay() const;
+    void UpdateLightPriority();
+    void UpdateSunRotation(float DeltaTime);
 };

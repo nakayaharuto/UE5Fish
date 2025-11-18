@@ -55,7 +55,7 @@ public:
     /** ヒット・キャッチ処理 */
     void SpawnCaughtFish();
     void ResetLure();
-
+    void OnLureFishHit();
 
 protected:
     /** 状態フラグ */

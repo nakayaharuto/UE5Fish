@@ -62,8 +62,6 @@ void AFishingRodActor::CastToLocation(const FVector& InTargetLocation)
     bIsCasting = true;
     bIsReeling = false;
     bIsFishBiting = false;
-    bFishCaught = false;
-    FishReelProgress = 0.f;
 
     FVector StartLoc = RodMesh->GetSocketLocation(TEXT("RodTip"));
     FRotator Rot = (InTargetLocation - StartLoc).Rotation();
@@ -72,19 +70,14 @@ void AFishingRodActor::CastToLocation(const FVector& InTargetLocation)
     Params.Owner = this;
     Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
-    // ルアー生成
     CurrentLure = GetWorld()->SpawnActor<ALureActor>(LureClass, StartLoc, Rot, Params);
     if (CurrentLure)
     {
         CurrentLure->SetActorHiddenInGame(false);
+
+        // LaunchLure に全ての投げ挙動を任せる
         CurrentLure->LaunchLure(InTargetLocation, CastSpeed);
 
-        if (UPrimitiveComponent* RootComp = Cast<UPrimitiveComponent>(CurrentLure->GetRootComponent()))
-        {
-            RootComp->SetSimulatePhysics(true); // 🌀 投げるときは物理ON
-            RootComp->AddImpulse(GetActorForwardVector() * 1000.f); // 投げる力
-        }
-        
         // デリゲート登録
         if (!CurrentLure->OnHitWater.IsBound())
             CurrentLure->OnHitWater.AddDynamic(this, &AFishingRodActor::StopReel);
@@ -95,10 +88,11 @@ void AFishingRodActor::CastToLocation(const FVector& InTargetLocation)
         // 糸接続
         if (LineCable)
         {
-            LineCable->SetAttachEndTo(nullptr, NAME_None);
+            LineCable->SetAttachEndTo(CurrentLure, NAME_None); // ルアーのRootComponentに接続
             LineCable->CableLength = FVector::Distance(StartLoc, InTargetLocation);
             LineCable->SetVisibility(true);
         }
+
         StartFishBastTimer();
     }
 }

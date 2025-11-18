@@ -29,6 +29,8 @@ public:
     UCableComponent* Cable; // 糸の見た目
 
 public:
+    
+
     ALureActor();
     virtual void Tick(float DeltaTime) override;
     virtual void BeginPlay() override;
@@ -50,6 +52,7 @@ protected:
     FVector LaunchDirection;
     float LaunchSpeed = 0.f;
     float LaunchTime = 0.f;  // 投げてからの経過時間
+    bool bIsFishHit = false; // 魚がヒットしたか
     bool bIsLaunched = false;
     FTimerHandle AirResistTimer;
 
@@ -57,7 +60,7 @@ protected:
     bool bIsBeingReeled = false;
     bool bAirResistanceActive = false;
     FVector ReelTarget;
-
+   
     // ランダムヒット用
     UPROPERTY()
     AFishActor* HitFish;  // 表示用魚

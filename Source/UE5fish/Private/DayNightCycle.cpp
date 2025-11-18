@@ -1,101 +1,72 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
-
-
-#include "DayNightCycle.h"
+﻿#include "DayNightCycle.h"
 #include "Engine/DirectionalLight.h"
-#include "Components/LightComponent.h"
+#include "Components/DirectionalLightComponent.h"
 
-// Sets default values
 ADayNightCycle::ADayNightCycle()
 {
- 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
-	PrimaryActorTick.bCanEverTick = true;
-
+    PrimaryActorTick.bCanEverTick = true;
 }
 
-// Called when the game starts or when spawned
 void ADayNightCycle::BeginPlay()
 {
-	Super::BeginPlay();
-	
+    Super::BeginPlay();
 }
 
-// Called every frame
 void ADayNightCycle::Tick(float DeltaTime)
 {
-	Super::Tick(DeltaTime);
+    Super::Tick(DeltaTime);
 
-	// 時間を進める
-	CurrentTime += DeltaTime * DaySpeed;
-	if (CurrentTime >= 24.0f)
-	{
-		CurrentTime -= 24.0f;
-	}
+    // ゲーム内時間を進める
+    CurrentTime += DeltaTime * TimeSpeed / 60.0f;
+    if (CurrentTime >= 24.0f) CurrentTime -= 24.0f;
 
-	// 太陽の回転を更新
-	UpdateSunRotion();
-	UpdateMoonRotation();
-	UpdateLightIntensity();
+    // ライトの影優先度切り替え
+    UpdateLightPriority();
+
+    // 太陽を回す
+    UpdateSunRotation(DeltaTime);
 }
 
-//太陽の回転
-void ADayNightCycle::UpdateSunRotion()
+// -----------------------------------------------------
+// 昼か？
+// -----------------------------------------------------
+bool ADayNightCycle::IsDay() const
 {
-	if (!SunLight) return;
-
-	// 時間を角度に変換（0〜24 → -90〜270度）
-	float SunPitch = (CurrentTime / 24.0f) * 360.0f - 90.0f;
-	FRotator NewRotation(SunPitch, 0.0f, 0.0f);
-
-	SunLight->SetActorRotation(NewRotation);
-
-	// 昼夜で光の強さを変える（任意）
-	if (UActorComponent* Comp = SunLight->GetComponentByClass(ULightComponent::StaticClass()))
-	{
-		ULightComponent* LightComp = Cast<ULightComponent>(Comp);
-		if (LightComp)
-		{
-			if (CurrentTime < 6.0f || CurrentTime > 18.0f)
-				LightComp->SetIntensity(0.2f);  // 夜
-			else
-				LightComp->SetIntensity(10.0f); // 昼
-		}
-	}
+    return (CurrentTime >= DayStartHour && CurrentTime < NightStartHour);
 }
 
-//月の回転
-void ADayNightCycle::UpdateMoonRotation()
+// -----------------------------------------------------
+// ForwardShadingPriority の切り替え（影の主ライト）
+// -----------------------------------------------------
+void ADayNightCycle::UpdateLightPriority()
 {
-	if (!MoonLight)return;
+    if (!SunLight || !MoonLight) return;
 
-	//太陽と逆方向に動かす
-	float MoonPitch = ((CurrentTime + 12.0f) / 24.0f) * 360.0f - 90.0f;
-	FRotator NewRotation(MoonPitch, 0.0f, 0.0f);
-	MoonLight->SetActorRotation(NewRotation);
+    auto* SunComp = Cast<UDirectionalLightComponent>(SunLight->GetLightComponent());
+    auto* MoonComp = Cast<UDirectionalLightComponent>(MoonLight->GetLightComponent());
+
+    if (!SunComp || !MoonComp) return;
+
+    if (IsDay())
+    {
+        SunComp->ForwardShadingPriority = 10;
+        MoonComp->ForwardShadingPriority = 1;
+    }
+    else
+    {
+        SunComp->ForwardShadingPriority = 1;
+        MoonComp->ForwardShadingPriority = 10;
+    }
 }
-
-// 昼夜でライトのON/OFFと強度を変える
-void ADayNightCycle::UpdateLightIntensity()
+// -----------------------------------------------------
+// 太陽光の角度（太陽の見た目が動く）
+// -----------------------------------------------------
+void ADayNightCycle::UpdateSunRotation(float DeltaTime)
 {
-	if (!SunLight || !MoonLight) return;
+    if (!SunLight) return;
 
-	UActorComponent* SunComp = SunLight->GetComponentByClass(ULightComponent::StaticClass());
-	UActorComponent* MoonComp = MoonLight->GetComponentByClass(ULightComponent::StaticClass());
-	if (!SunComp || !MoonComp) return;
+    float SunPitch = (CurrentTime / 24.0f) * 360.0f - 90.0f;
 
-	ULightComponent* SunLightComp = Cast<ULightComponent>(SunComp);
-	ULightComponent* MoonLightComp = Cast<ULightComponent>(MoonComp);
-
-	if (CurrentTime >= 6.0f && CurrentTime <= 18.0f)
-	{
-		// 昼
-		SunLightComp->SetIntensity(10.0f);
-		MoonLightComp->SetIntensity(0.0f);
-	}
-	else
-	{
-		// 夜
-		SunLightComp->SetIntensity(0.0f);
-		MoonLightComp->SetIntensity(2.0f); // 月の光は弱め
-	}
+    FRotator NewRot = FRotator(SunPitch, 0.0f, 0.0f);
+    SunLight->SetActorRotation(NewRot);
 }
