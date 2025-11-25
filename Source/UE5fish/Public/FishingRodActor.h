@@ -44,7 +44,7 @@ public:
     TSubclassOf<AFishActor> FishClass;
 
     UFUNCTION()
-    void OnFishHooked(AFishActor* Fish);
+    void OnFishHitEvent();
 
     /** ルアーをキャスト */
     void CastToLocation(const FVector& TargetLocation);

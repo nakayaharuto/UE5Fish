@@ -27,6 +27,12 @@ AFishingRodActor::AFishingRodActor()
 void AFishingRodActor::BeginPlay()
 {
     Super::BeginPlay();
+
+
+    if (CurrentLure)
+    {
+        CurrentLure->OnFishHit.AddDynamic(this, &AFishingRodActor::OnFishHitEvent);
+    }
 }
 
 void AFishingRodActor::ResetRodState()
@@ -252,14 +258,9 @@ void AFishingRodActor::OnFishBite()
     }*/
 }
 
-void AFishingRodActor::OnFishHooked(AFishActor* Fish)
+void AFishingRodActor::OnFishHitEvent()
 {
-    if (!Fish) return;
-
-    bIsFishBiting = true;
-    CaughtFish = Fish;
-
-    //StartReel();  // ← 自動で巻き上げ開始
+    UE_LOG(LogTemp, Warning, TEXT("Rod: HIT 受信"));
 }
 
 void AFishingRodActor::OnFishCaught()

@@ -38,6 +38,7 @@ ALureActor::ALureActor()
 void ALureActor::BeginPlay()
 {
     Super::BeginPlay();
+
 }
 
 void ALureActor::LaunchLure(const FVector& InTarget, float InSpeed)
@@ -61,8 +62,8 @@ void ALureActor::LaunchLure(const FVector& InTarget, float InSpeed)
     GetWorld()->GetTimerManager().SetTimer(AirResistTimer, this, &ALureActor::EnableAirResistance, 0.25f, false);
 
     // ランダムヒットタイマー（既存スクリプトの意図を残す）
-    /*float HitDelay = FMath::FRandRange(HitDelayRange.X, HitDelayRange.Y);
-    GetWorld()->GetTimerManager().SetTimer(HitTimerHandle, this, &ALureActor::SpawnHitFish, HitDelay, false);*/
+    float HitDelay = FMath::FRandRange(HitDelayRange.X, HitDelayRange.Y);
+    GetWorld()->GetTimerManager().SetTimer(HitTimerHandle, this, &ALureActor::SpawnHitFish, HitDelay, false);
 
     // ルアーを生成した FishingRod 側があれば、竿の LineCable をこのルアーに繋ぐ処理は FishingRod 側で呼ぶこと。
     // （AFishingRodActor::CastToLocation で LineCable->SetAttachEndTo(CurrentLure, NAME_None) を追加推奨）
@@ -91,24 +92,7 @@ void ALureActor::EndCast()
 
 void ALureActor::SpawnHitFish()
 {
-   if (!FishClass) return;
-    if (SpawnedFish) return;
-
-    FActorSpawnParameters Params;
-    SpawnedFish = GetWorld()->SpawnActor<AFishActor>(
-        FishClass,
-        GetActorLocation(),
-        GetActorRotation(),
-        Params
-    );
-
-    if (SpawnedFish)
-    {
-        // RodActor へ魚を通知
-        OnFishHit.Broadcast();
-
-        UE_LOG(LogTemp, Warning, TEXT("Fish Spawned and HIT!"));
-    }
+    OnFishHitConfirmed();
 }
 
 void ALureActor::SetBeingReeled(bool bReeling, const FVector& ReelTargetIn)
@@ -170,15 +154,36 @@ void ALureActor::NotifyActorBeginOverlap(AActor* OtherActor)
 {
     Super::NotifyActorBeginOverlap(OtherActor);
 
-    // もし魚アクターとぶつかったら（既存の挙動を踏襲）
-    AFishActor* Fish = Cast<AFishActor>(OtherActor);
-    if (Fish)
+    if (Cast<AFishActor>(OtherActor))
     {
-        // 外部に発火（例えば竿側も Bind しているなら反応する）
-        OnFishHit.Broadcast();
+        OnFishHitConfirmed();
+    }
+}
 
-        // 表示は FishingRod / SpawnHitFish を優先してるのでここは軽めに扱う
-        // 例えば魚にアタックさせる等の拡張はここに追加
+void ALureActor::OnFishHitConfirmed()
+{
+    if (bIsFishHit) return;
+    bIsFishHit = true;
+
+    // 魚をスポーン
+    if (!FishClass) return;
+
+    FActorSpawnParameters Params;
+    HitFish = GetWorld()->SpawnActor<AFishActor>(
+        FishClass,
+        GetActorLocation(),
+        GetActorRotation(),
+        Params
+    );
+
+    if (HitFish)
+    {
+        // ルアーに追従させる
+        HitFish->AttachToActor(this, FAttachmentTransformRules::KeepWorldTransform);
+
+        // 竿に通知
+        OnFishHit.Broadcast();
+        UE_LOG(LogTemp, Warning, TEXT("Fish HIT CONFIRMED!"));
     }
 }
 
@@ -198,7 +203,7 @@ void ALureActor::ReelStep(float DeltaTime)
         // 魚がついていれば消す（まずは見た目優先）
         if (HitFish)
         {
-            HitFish->Destroy();
+            //HitFish->Destroy();
             HitFish = nullptr;
         }
 

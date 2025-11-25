@@ -46,6 +46,7 @@ public:
 
     // 追加：単純な Cast 用（保持する場合に備えて）
     void CastLure(const FVector& Direction, float Power) { LaunchLure(GetActorLocation() + Direction * 10.f, Power); }
+    void OnFishHitConfirmed();
 
     bool IsReeling() const { return bIsBeingReeled; }
 
