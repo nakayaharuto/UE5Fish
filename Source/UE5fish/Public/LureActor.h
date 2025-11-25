@@ -16,6 +16,9 @@ class UE5FISH_API ALureActor : public AActor
     GENERATED_BODY()
 
 public:
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Fishing")
+    TSubclassOf<AFishActor> FishClass;
+
     UPROPERTY(BlueprintAssignable)
     FLureEvent OnHitWater;
 
@@ -89,6 +92,9 @@ protected:
     // “à•”ŠÖ”
     UFUNCTION()
     void EnableAirResistance();
+
+    UPROPERTY()
+    AFishActor* SpawnedFish = nullptr;
 
     void EndCast();              // ˆê’è‹——£/time‚Å•¨—‚ğ~‚ß‚é
     void SpawnHitFish();         // ƒ‰ƒ“ƒ_ƒ€‚Å‹›‚ğo‚·

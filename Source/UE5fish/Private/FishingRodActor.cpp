@@ -79,8 +79,8 @@ void AFishingRodActor::CastToLocation(const FVector& InTargetLocation)
         CurrentLure->LaunchLure(InTargetLocation, CastSpeed);
 
         // デリゲート登録
-        if (!CurrentLure->OnHitWater.IsBound())
-            CurrentLure->OnHitWater.AddDynamic(this, &AFishingRodActor::StopReel);
+        /*if (!CurrentLure->OnHitWater.IsBound())
+            CurrentLure->OnHitWater.AddDynamic(this, &AFishingRodActor::StopReel);*/
 
         if (!CurrentLure->OnFishHit.IsBound())
             CurrentLure->OnFishHit.AddDynamic(this, &AFishingRodActor::StartReel);
@@ -93,7 +93,7 @@ void AFishingRodActor::CastToLocation(const FVector& InTargetLocation)
             LineCable->SetVisibility(true);
         }
 
-        StartFishBastTimer();
+        //StartFishBastTimer();
     }
 }
 
@@ -118,16 +118,18 @@ void AFishingRodActor::StopReel()
 
     bIsReeling = true;
 
-    if (CurrentLure)
-    {
-        if (UPrimitiveComponent* RootComp = Cast<UPrimitiveComponent>(CurrentLure->GetRootComponent()))
-        {
-            RootComp->SetSimulatePhysics(false); // 🎯 ここで物理を止める
-        }
-    }
+    //if (CurrentLure)
+    //{
+    //    if (UPrimitiveComponent* RootComp = Cast<UPrimitiveComponent>(CurrentLure->GetRootComponent()))
+    //    {
+    //        RootComp->SetSimulatePhysics(false); // 🎯 ここで物理を止める
+    //    }
+    //}
 
     FVector RodTip = RodMesh->GetSocketLocation(TEXT("RodTip"));
     CurrentLure->SetBeingReeled(false, RodTip);
+
+    return;
 }
 
 void AFishingRodActor::Tick(float DeltaTime)
@@ -224,13 +226,13 @@ void AFishingRodActor::SpawnCaughtFish()
 void AFishingRodActor::StartFishBastTimer()
 {
     // 3〜8秒のランダムで魚がかかる
-    float Delay = FMath::FRandRange(3.f, 8.f);
-    GetWorldTimerManager().SetTimer(FishBiteTimerHandle, this, &AFishingRodActor::OnFishBite, Delay, false);
+    //float Delay = FMath::FRandRange(3.f, 8.f);
+    //GetWorldTimerManager().SetTimer(FishBiteTimerHandle, this, &AFishingRodActor::OnFishBite, Delay, false);
 }
 
 void AFishingRodActor::OnFishBite()
 {
-    if (!CurrentLure || bFishCaught) return;
+    /*if (!CurrentLure || bFishCaught) return;
 
     bIsFishBiting = true;
 
@@ -247,7 +249,17 @@ void AFishingRodActor::OnFishBite()
     {
         CaughtFish->AttachToActor(CurrentLure, FAttachmentTransformRules::KeepWorldTransform);
         CaughtFish->ShowFish();
-    }
+    }*/
+}
+
+void AFishingRodActor::OnFishHooked(AFishActor* Fish)
+{
+    if (!Fish) return;
+
+    bIsFishBiting = true;
+    CaughtFish = Fish;
+
+    //StartReel();  // ← 自動で巻き上げ開始
 }
 
 void AFishingRodActor::OnFishCaught()

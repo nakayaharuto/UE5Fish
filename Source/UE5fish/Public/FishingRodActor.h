@@ -43,6 +43,9 @@ public:
     UPROPERTY(EditAnywhere)
     TSubclassOf<AFishActor> FishClass;
 
+    UFUNCTION()
+    void OnFishHooked(AFishActor* Fish);
+
     /** ルアーをキャスト */
     void CastToLocation(const FVector& TargetLocation);
 
@@ -55,7 +58,6 @@ public:
     /** ヒット・キャッチ処理 */
     void SpawnCaughtFish();
     void ResetLure();
-    void OnLureFishHit();
 
 protected:
     /** 状態フラグ */
@@ -64,6 +66,7 @@ protected:
     bool bIsFishBiting = false;
     bool bFishCaught = false;
     bool bIsCharging = false;
+    bool Lure = false;
 
 
     /** リール進行度 */

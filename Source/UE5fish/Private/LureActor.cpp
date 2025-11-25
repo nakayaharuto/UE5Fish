@@ -61,8 +61,8 @@ void ALureActor::LaunchLure(const FVector& InTarget, float InSpeed)
     GetWorld()->GetTimerManager().SetTimer(AirResistTimer, this, &ALureActor::EnableAirResistance, 0.25f, false);
 
     // ランダムヒットタイマー（既存スクリプトの意図を残す）
-    float HitDelay = FMath::FRandRange(HitDelayRange.X, HitDelayRange.Y);
-    GetWorld()->GetTimerManager().SetTimer(HitTimerHandle, this, &ALureActor::SpawnHitFish, HitDelay, false);
+    /*float HitDelay = FMath::FRandRange(HitDelayRange.X, HitDelayRange.Y);
+    GetWorld()->GetTimerManager().SetTimer(HitTimerHandle, this, &ALureActor::SpawnHitFish, HitDelay, false);*/
 
     // ルアーを生成した FishingRod 側があれば、竿の LineCable をこのルアーに繋ぐ処理は FishingRod 側で呼ぶこと。
     // （AFishingRodActor::CastToLocation で LineCable->SetAttachEndTo(CurrentLure, NAME_None) を追加推奨）
@@ -91,20 +91,24 @@ void ALureActor::EndCast()
 
 void ALureActor::SpawnHitFish()
 {
-    if (HitFish) return;
+   if (!FishClass) return;
+    if (SpawnedFish) return;
 
-    FVector SpawnLoc = GetActorLocation() + FVector(FMath::FRandRange(60.f, 140.f), 0.f, -20.f);
     FActorSpawnParameters Params;
-    Params.Owner = GetOwner();
-    UWorld* W = GetWorld();
-    if (!W) return;
+    SpawnedFish = GetWorld()->SpawnActor<AFishActor>(
+        FishClass,
+        GetActorLocation(),
+        GetActorRotation(),
+        Params
+    );
 
-    HitFish = W->SpawnActor<AFishActor>(AFishActor::StaticClass(), SpawnLoc, FRotator::ZeroRotator, Params);
-    if (HitFish) HitFish->ShowFish();
+    if (SpawnedFish)
+    {
+        // RodActor へ魚を通知
+        OnFishHit.Broadcast();
 
-    bIsFishHit = true; // 魚ヒットフラグON
-
-    OnFishHit.Broadcast(); // ここでリール開始を通知
+        UE_LOG(LogTemp, Warning, TEXT("Fish Spawned and HIT!"));
+    }
 }
 
 void ALureActor::SetBeingReeled(bool bReeling, const FVector& ReelTargetIn)
@@ -227,11 +231,11 @@ void ALureActor::Tick(float DeltaTime)
             Mesh->SetPhysicsLinearVelocity(Vel * (1.f - Damping));
         }
 
-        if (FVector::Distance(StartLocation, GetActorLocation()) >= MaxCastDistance ||
+        /*if (FVector::Distance(StartLocation, GetActorLocation()) >= MaxCastDistance ||
             LaunchTime >= MaxCastTime)
         {
             EndCast();
-        }
+        }*/
     }
 
     // リール中は一定速度で巻く
