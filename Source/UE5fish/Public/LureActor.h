@@ -31,6 +31,7 @@ public:
     UPROPERTY(VisibleAnywhere)
     UCableComponent* Cable; // 糸の見た目
 
+
 public:
     
 
@@ -43,6 +44,7 @@ public:
     void SetBeingReeled(bool bReeling, const FVector& ReelTarget);
     void NotifyActorBeginOverlap(AActor* OtherActor) override;
     void ResetLure();
+    void TryFishHit();
 
     // 追加：単純な Cast 用（保持する場合に備えて）
     void CastLure(const FVector& Direction, float Power) { LaunchLure(GetActorLocation() + Direction * 10.f, Power); }
@@ -94,10 +96,13 @@ protected:
     UFUNCTION()
     void EnableAirResistance();
 
+    // 内部関数
+    UFUNCTION()
+    void SpawnHitFish();         // ランダムで魚を出す
+    
     UPROPERTY()
     AFishActor* SpawnedFish = nullptr;
 
     void EndCast();              // 一定距離/timeで物理を止める
-    void SpawnHitFish();         // ランダムで魚を出す
     void ReelStep(float DeltaTime); // 一定速度で巻く処理
 };

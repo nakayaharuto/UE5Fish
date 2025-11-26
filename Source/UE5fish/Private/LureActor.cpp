@@ -11,6 +11,7 @@
 ALureActor::ALureActor()
 {
     PrimaryActorTick.bCanEverTick = true;
+    bIsFishHit = false;
 
     Mesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Mesh"));
     RootComponent = Mesh;
@@ -33,6 +34,8 @@ ALureActor::ALureActor()
     Cable->CableLength = 200.f;
     Cable->NumSegments = 12;
     Cable->SetVisibility(false); // 初期は竿側の Cable を使う
+
+   
 }
 
 void ALureActor::BeginPlay()
@@ -43,6 +46,7 @@ void ALureActor::BeginPlay()
 
 void ALureActor::LaunchLure(const FVector& InTarget, float InSpeed)
 {
+    bIsFishHit = false;
     // 方向をまっすぐに
     StartLocation = GetActorLocation();
     LaunchDirection = (InTarget - StartLocation).GetSafeNormal();
@@ -63,10 +67,10 @@ void ALureActor::LaunchLure(const FVector& InTarget, float InSpeed)
 
     // ランダムヒットタイマー（既存スクリプトの意図を残す）
     float HitDelay = FMath::FRandRange(HitDelayRange.X, HitDelayRange.Y);
-    GetWorld()->GetTimerManager().SetTimer(HitTimerHandle, this, &ALureActor::SpawnHitFish, HitDelay, false);
+    UE_LOG(LogTemp, Warning, TEXT("Setting Fish Hit Timer: %f seconds"), HitDelay);
+    GetWorld()->GetTimerManager().SetTimer(HitTimerHandle, this, &ALureActor::OnFishHitConfirmed, HitDelay, false);
 
-    // ルアーを生成した FishingRod 側があれば、竿の LineCable をこのルアーに繋ぐ処理は FishingRod 側で呼ぶこと。
-    // （AFishingRodActor::CastToLocation で LineCable->SetAttachEndTo(CurrentLure, NAME_None) を追加推奨）
+    
 }
 
 void ALureActor::EnableAirResistance()
@@ -117,8 +121,16 @@ void ALureActor::SetBeingReeled(bool bReeling, const FVector& ReelTargetIn)
     }
 }
 
+void ALureActor::TryFishHit()
+{
+    UE_LOG(LogTemp, Warning, TEXT("TryFishHit called"));
+}
+
 void ALureActor::ResetLure()
 {
+
+    bIsFishHit = false;
+
     // ルアーを竿先に戻し、状態を初期化
     bIsLaunched = false;
     bIsBeingReeled = false;
@@ -148,6 +160,8 @@ void ALureActor::ResetLure()
     {
         Rod->ResetRodState();
     }
+
+   
 }
 
 void ALureActor::NotifyActorBeginOverlap(AActor* OtherActor)
@@ -164,7 +178,16 @@ void ALureActor::OnFishHitConfirmed()
 {
     if (bIsFishHit) return;
     bIsFishHit = true;
-
+    // デバッグ用：画面左上に小さく表示
+    if (GEngine)
+    {
+        GEngine->AddOnScreenDebugMessage(
+            1,                // メッセージID（同じIDを使うと常に同じ位置に表示）
+            5.f,              // 表示時間（秒）
+            FColor::Yellow,   // 文字色
+            TEXT("Hit判定")   // 表示テキスト
+        );
+    }
     // 魚をスポーン
     if (!FishClass) return;
 
@@ -178,8 +201,11 @@ void ALureActor::OnFishHitConfirmed()
 
     if (HitFish)
     {
-        // ルアーに追従させる
-        HitFish->AttachToActor(this, FAttachmentTransformRules::KeepWorldTransform);
+        // ルアーに完全追従（位置・回転とも反映）
+        HitFish->AttachToActor(
+            this,
+            FAttachmentTransformRules::SnapToTargetNotIncludingScale
+        );
 
         // 竿に通知
         OnFishHit.Broadcast();
