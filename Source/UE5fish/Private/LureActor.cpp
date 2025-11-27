@@ -201,11 +201,7 @@ void ALureActor::OnFishHitConfirmed()
 
     if (HitFish)
     {
-        // ルアーに完全追従（位置・回転とも反映）
-        HitFish->AttachToActor(
-            this,
-            FAttachmentTransformRules::SnapToTargetNotIncludingScale
-        );
+        
 
         // 竿に通知
         OnFishHit.Broadcast();

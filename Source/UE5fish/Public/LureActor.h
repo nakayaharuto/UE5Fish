@@ -31,6 +31,9 @@ public:
     UPROPERTY(VisibleAnywhere)
     UCableComponent* Cable; // 糸の見た目
 
+    // ランダムヒット用
+    UPROPERTY()
+    AFishActor* HitFish;  // 表示用魚
 
 public:
     
@@ -67,9 +70,7 @@ protected:
     bool bAirResistanceActive = false;
     FVector ReelTarget;
    
-    // ランダムヒット用
-    UPROPERTY()
-    AFishActor* HitFish;  // 表示用魚
+    
     FTimerHandle HitTimerHandle;
 
     // 設定可能パラメータ

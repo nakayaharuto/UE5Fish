@@ -106,16 +106,22 @@ void AFishingRodActor::CastToLocation(const FVector& InTargetLocation)
 void AFishingRodActor::StartReel()
 {
     if (!CurrentLure || bFishCaught) return;
+    if (IsValid(CurrentLure->HitFish))
+    {
+        // このタイミングで初めてルアーに追従させる
+        CurrentLure->HitFish->AttachToActor(
+            CurrentLure,
+            FAttachmentTransformRules::KeepWorldTransform
+        );
 
-    bIsReeling = true;
+        UE_LOG(LogTemp, Warning, TEXT("Fish attached to lure because reel started!"));
+    }
+
+    bIsReeling = false;
 
     FVector RodTip = RodMesh->GetSocketLocation(TEXT("RodTip"));
     CurrentLure->SetBeingReeled(true, RodTip);
-
-    if (IsValid(CurrentLure))
-    {
-        CurrentLure->SetBeingReeled(true, RodTip);
-    }
+    
 }
 
 void AFishingRodActor::StopReel()
