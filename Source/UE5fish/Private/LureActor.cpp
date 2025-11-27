@@ -201,8 +201,6 @@ void ALureActor::OnFishHitConfirmed()
 
     if (HitFish)
     {
-        
-
         // 竿に通知
         OnFishHit.Broadcast();
         UE_LOG(LogTemp, Warning, TEXT("Fish HIT CONFIRMED!"));
