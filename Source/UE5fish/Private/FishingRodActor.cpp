@@ -128,15 +128,7 @@ void AFishingRodActor::StopReel()
 {
     if (!CurrentLure || bFishCaught) return;
 
-    bIsReeling = true;
-
-    //if (CurrentLure)
-    //{
-    //    if (UPrimitiveComponent* RootComp = Cast<UPrimitiveComponent>(CurrentLure->GetRootComponent()))
-    //    {
-    //        RootComp->SetSimulatePhysics(false); // 🎯 ここで物理を止める
-    //    }
-    //}
+    bIsReeling = false;
 
     FVector RodTip = RodMesh->GetSocketLocation(TEXT("RodTip"));
     CurrentLure->SetBeingReeled(false, RodTip);
