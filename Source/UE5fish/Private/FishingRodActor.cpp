@@ -227,35 +227,6 @@ void AFishingRodActor::SpawnCaughtFish()
     }
 }
 
-void AFishingRodActor::StartFishBastTimer()
-{
-    // 3〜8秒のランダムで魚がかかる
-    //float Delay = FMath::FRandRange(3.f, 8.f);
-    //GetWorldTimerManager().SetTimer(FishBiteTimerHandle, this, &AFishingRodActor::OnFishBite, Delay, false);
-}
-
-void AFishingRodActor::OnFishBite()
-{
-    /*if (!CurrentLure || bFishCaught) return;
-
-    bIsFishBiting = true;
-
-    //テキスト通知（ログ代わりに一旦）
-    GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Yellow, TEXT("🎣 Hit!"));
-
-    //魚を生成してルアーに紐づける
-    FVector Loc = CurrentLure->GetActorLocation();
-    FActorSpawnParameters Params;
-    Params.Owner = this;
-
-    CaughtFish = GetWorld()->SpawnActor<AFishActor>(FishClass, Loc, FRotator::ZeroRotator, Params);
-    if (CaughtFish)
-    {
-        CaughtFish->AttachToActor(CurrentLure, FAttachmentTransformRules::KeepWorldTransform);
-        CaughtFish->ShowFish();
-    }*/
-}
-
 void AFishingRodActor::OnFishHitEvent()
 {
     UE_LOG(LogTemp, Warning, TEXT("Rod: HIT 受信"));

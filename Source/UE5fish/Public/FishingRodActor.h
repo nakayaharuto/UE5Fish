@@ -84,8 +84,6 @@ protected:
 private:
     FTimerHandle FishBiteTimerHandle;
 
-    void StartFishBastTimer();
-    void OnFishBite();          // 実際のヒット発生
     void OnFishCaught();        // 巻き上げ完了時
 
 };

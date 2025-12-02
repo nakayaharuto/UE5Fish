@@ -42,10 +42,6 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* LookAction;
 
-	//インタラクト
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
-	UInputAction* BoatInteractAction;
-
 	//釣り竿
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Fishing, meta = (AllowPrivateAccess = "true"))
 	AFishingRodActor* FishingRod;
@@ -109,7 +105,6 @@ protected:
 	/// <param name="Value"></param>
 	void Move(const FInputActionValue& Value);
 	void Look(const FInputActionValue& Value);
-	void InteractWithBoat(const FInputActionValue& Value);
 	void ToggleEquipRod(const FInputActionValue& Value);
 	void StartCastingInput(const FInputActionValue& Value);
 	void ReleaseCastingInput(const FInputActionValue& Value);

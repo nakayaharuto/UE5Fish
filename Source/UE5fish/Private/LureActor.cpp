@@ -15,12 +15,19 @@ ALureActor::ALureActor()
 
     Mesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Mesh"));
     RootComponent = Mesh;
-    Mesh->BodyInstance.bUseCCD = true;
+    
 
     Mesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
     Mesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Block);
     Mesh->SetCollisionObjectType(ECC_PhysicsBody);
 
+}
+
+void ALureActor::BeginPlay()
+{
+    Super::BeginPlay();
+
+    Mesh->BodyInstance.bUseCCD = true;
     Mesh->SetSimulatePhysics(true);
     Mesh->SetCollisionProfileName(TEXT("PhysicsActor"));
     Mesh->SetMassOverrideInKg(NAME_None, 0.2f);
@@ -34,14 +41,6 @@ ALureActor::ALureActor()
     Cable->CableLength = 200.f;
     Cable->NumSegments = 12;
     Cable->SetVisibility(false); // 初期は竿側の Cable を使う
-
-   
-}
-
-void ALureActor::BeginPlay()
-{
-    Super::BeginPlay();
-
 }
 
 void ALureActor::LaunchLure(const FVector& InTarget, float InSpeed)

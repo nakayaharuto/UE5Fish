@@ -6,7 +6,6 @@
 #include "EnhancedInputSubsystems.h"
 #include "InputActionValue.h"
 #include "FishingRodActor.h"
-#include "BoatPawn.h"
 #include "LureActor.h"
 #include "FishActor.h"
 #include "Kismet/GameplayStatics.h"
@@ -91,7 +90,6 @@ void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 	{
 		if (MoveAction) EnhancedInput->BindAction(MoveAction, ETriggerEvent::Triggered, this, &AMyCharacter::Move);
 		if (LookAction) EnhancedInput->BindAction(LookAction, ETriggerEvent::Triggered, this, &AMyCharacter::Look);
-		if (BoatInteractAction) EnhancedInput->BindAction(BoatInteractAction, ETriggerEvent::Triggered, this, &AMyCharacter::InteractWithBoat);
 		if (FishingAction) EnhancedInput->BindAction(FishingAction, ETriggerEvent::Triggered, this, &AMyCharacter::ToggleEquipRod);
 		if (StartCasting) EnhancedInput->BindAction(StartCasting, ETriggerEvent::Triggered, this, &AMyCharacter::StartCastingInput);
 		if (ReleaseCasting) EnhancedInput->BindAction(ReleaseCasting, ETriggerEvent::Started, this, &AMyCharacter::ReleaseCastingInput);
@@ -127,23 +125,6 @@ void AMyCharacter::Look(const FInputActionValue& Value)
 	const FVector2D LookAxisVector = Value.Get<FVector2D>();
 	AddControllerYawInput(LookAxisVector.X);
 	AddControllerPitchInput(LookAxisVector.Y);
-}
-
-//////////////////////////////////////////////////////////////////////////
-// ボート関連（オプション）
-
-void AMyCharacter::InteractWithBoat(const FInputActionValue& Value)
-{
-	if (CurrentBoat && !bIsInBoat)
-	{
-		AttachToActor(CurrentBoat, FAttachmentTransformRules::KeepWorldTransform);
-		bIsInBoat = true;
-	}
-	else if (bIsInBoat)
-	{
-		DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
-		bIsInBoat = false;
-	}
 }
 
 //////////////////////////////////////////////////////////////////////////
