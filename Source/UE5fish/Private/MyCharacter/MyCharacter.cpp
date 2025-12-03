@@ -88,14 +88,18 @@ void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 
 	if (UEnhancedInputComponent* EnhancedInput = CastChecked<UEnhancedInputComponent>(PlayerInputComponent))
 	{
+		//移動・視点
 		if (MoveAction) EnhancedInput->BindAction(MoveAction, ETriggerEvent::Triggered, this, &AMyCharacter::Move);
 		if (LookAction) EnhancedInput->BindAction(LookAction, ETriggerEvent::Triggered, this, &AMyCharacter::Look);
 		if (FishingAction) EnhancedInput->BindAction(FishingAction, ETriggerEvent::Triggered, this, &AMyCharacter::ToggleEquipRod);
+		
+		//Eキーでキャスト
 		if (StartCasting) EnhancedInput->BindAction(StartCasting, ETriggerEvent::Triggered, this, &AMyCharacter::StartCastingInput);
-		if (ReleaseCasting) EnhancedInput->BindAction(ReleaseCasting, ETriggerEvent::Started, this, &AMyCharacter::ReleaseCastingInput);
+		//if (ReleaseCasting) EnhancedInput->BindAction(ReleaseCasting, ETriggerEvent::Started, this, &AMyCharacter::ReleaseCastingInput);
+		
+		//左クリックでゲージの調整
 		if (StartReel) EnhancedInput->BindAction(StartReel, ETriggerEvent::Triggered, this, &AMyCharacter::StartReelInput);
 		if (StopReel) EnhancedInput->BindAction(StopReel, ETriggerEvent::Completed, this, &AMyCharacter::StopReelInput);
-		//if (RodUpDownAction) EnhancedInput->BindAction(RodUpDownAction, ETriggerEvent::Triggered, this, &AMyCharacter::MoveRodUpDown);
 	}
 }
 
@@ -134,27 +138,13 @@ void AMyCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	if (bIsReelingFish && LureActor)
+	if (bIsFishing && FishingRod && FishingRod->bIsFishBattle)
 	{
-		// 魚の方向
-		FVector FishDir = (LureActor->GetActorLocation() - GetActorLocation()).GetSafeNormal();
-
-		// プレイヤーがスティックを倒した方向を取得
-		FVector2D StickInput = CurrentInputDirection; // ← InputAxis で更新
-		FVector PlayerTiltDir = FVector(StickInput.X, StickInput.Y, 0.f).GetSafeNormal();
-
-		// 竿を傾ける
-		if (!PlayerTiltDir.IsNearlyZero())
+		if (bIsReelPressed)
 		{
-			// 竿の回転制御
-			FRotator TargetRot = FRotationMatrix::MakeFromX(PlayerTiltDir * -1).Rotator();
-			FishingRod->SetActorRotation(FMath::RInterpTo(FishingRod->GetActorRotation(), TargetRot, DeltaTime, 3.f));
+			// RodActor 側で Tick 内に長押し処理用メソッドを用意
+			FishingRod->AdjustPlayerGauge(DeltaTime);
 		}
-
-		// 魚との張力を物理的に再現
-		FVector TensionDir = (GetActorLocation() - LureActor->GetActorLocation()).GetSafeNormal();
-		float TensionStrength = FVector::DotProduct(TensionDir, -FishDir); // 魚と逆向きなら強い
-		LureActor->Mesh->AddForce(TensionDir * TensionStrength * 2500.f);
 	}
 }
 
@@ -174,6 +164,7 @@ void AMyCharacter::ToggleFishingRod(bool bEquip)
 			// 🎣 釣り開始 → 初期化
 			FishingRod->RodMesh->SetVisibility(true, true);
 			FishingRod->ResetRodState();
+
 		}
 		else
 		{
@@ -203,35 +194,30 @@ void AMyCharacter::StartCastingInput(const FInputActionValue& Value)
 	if (GetWorld()->LineTraceSingleByChannel(Hit, CamLoc, End, ECC_Visibility, Params))
 		End = Hit.Location;
 
-	//FishingRod->ShowCastTarget(End);
-}
-
-void AMyCharacter::ReleaseCastingInput(const FInputActionValue& Value)
-{
-	if (!bIsFishing || !FishingRod) return;
-
-    FVector CamLoc = FishingCamera->GetComponentLocation();
-    FVector CamDir = FishingCamera->GetForwardVector();
-
-    FVector End = CamLoc + CamDir * 1500.f;
-    FHitResult Hit;
-    FCollisionQueryParams Params;
-    Params.AddIgnoredActor(this);
-
-    if (GetWorld()->LineTraceSingleByChannel(Hit, CamLoc, End, ECC_Visibility, Params))
-        End = Hit.Location;
-
-    FishingRod->CastToLocation(End);
+	FishingRod->CastToLocation(End);
 }
 
 void AMyCharacter::StartReelInput(const FInputActionValue& Value)
 {
+	bIsReelPressed = true;
+	// 左クリックに対応：バトル中はゲージクリックを呼ぶ
 	if (FishingRod)
-		FishingRod->StartReel();
+	{
+		if (FishingRod->bIsFishBattle)
+		{
+			FishingRod->OnReelClick();
+		}
+		else
+		{
+			// 釣り中でバトル中でなければ従来の StartReel を呼ぶ（必要なら）
+			FishingRod->StartReel();
+		}
+	}
 }
 
 void AMyCharacter::StopReelInput(const FInputActionValue& Value)
 {
+	bIsReelPressed = false;
 	if (FishingRod)
 		FishingRod->StopReel();
 }

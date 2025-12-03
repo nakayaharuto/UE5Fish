@@ -22,6 +22,17 @@ AFishingRodActor::AFishingRodActor()
     LineCable->CableWidth = 2.f;
     LineCable->bEnableCollision = false;
     LineCable->SetVisibility(false); // 初期は非表示
+
+    // デフォルトゲージ値
+    PlayerGauge = 0.f;
+    FishGauge = 0.f;
+    GaugeMax = 100.f;
+
+    // 調整用デフォルト（必要なら調整）
+    PlayerGaugeIncreasePerClick = 12.f;
+    FishGaugeIncreasePerClick = 9.f;
+    PlayerGaugeDecayRate = 8.f;
+    FishGaugeDecayRate = 6.f;
 }
 
 void AFishingRodActor::BeginPlay()
@@ -48,6 +59,10 @@ void AFishingRodActor::ResetRodState()
     bFishCaught = false;
     CastCharge = 0.f;
     FishReelProgress = 0.f;
+
+    bIsFishBattle = false;
+    PlayerGauge = 0.f;
+    FishGauge = 0.f;
 
     // 糸リセット
     if (LineCable)
@@ -84,10 +99,6 @@ void AFishingRodActor::CastToLocation(const FVector& InTargetLocation)
         // LaunchLure に全ての投げ挙動を任せる
         CurrentLure->LaunchLure(InTargetLocation, CastSpeed);
 
-        // デリゲート登録
-        /*if (!CurrentLure->OnHitWater.IsBound())
-            CurrentLure->OnHitWater.AddDynamic(this, &AFishingRodActor::StopReel);*/
-
         if (!CurrentLure->OnFishHit.IsBound())
             CurrentLure->OnFishHit.AddDynamic(this, &AFishingRodActor::StartReel);
 
@@ -98,8 +109,6 @@ void AFishingRodActor::CastToLocation(const FVector& InTargetLocation)
             LineCable->CableLength = FVector::Distance(StartLoc, InTargetLocation);
             LineCable->SetVisibility(true);
         }
-
-        //StartFishBastTimer();
     }
 }
 
@@ -191,6 +200,19 @@ void AFishingRodActor::Tick(float DeltaTime)
         float TargetLength = FVector::Distance(RodTip, CurrentLure->GetActorLocation());
         LineCable->CableLength = FMath::FInterpTo(LineCable->CableLength, TargetLength, DeltaTime, 10.f);
     }
+
+    // --- 🟩 バトル中のゲージ時間経過 ---
+    if (bIsFishBattle)
+    {
+        // 減衰
+        PlayerGauge -= PlayerGaugeDecayRate * DeltaTime;
+        FishGauge -= FishGaugeDecayRate * DeltaTime;
+
+        PlayerGauge = FMath::Clamp(PlayerGauge, 0.f, GaugeMax);
+        FishGauge = FMath::Clamp(FishGauge, 0.f, GaugeMax);
+
+        CheckFishBattleState();
+    }
 }
 
 void AFishingRodActor::ResetLure()
@@ -227,9 +249,117 @@ void AFishingRodActor::SpawnCaughtFish()
     }
 }
 
+//長押しされた場合
+void AFishingRodActor::AdjustPlayerGauge(float DeltaTime)
+{
+    if (!bIsFishBattle) return;
+
+    PlayerGauge += PlayerGaugeIncreasePerClick * DeltaTime; // 秒単位で増加
+    FishGauge += FishGaugeIncreasePerClick * DeltaTime;
+
+    // プレイヤーゲージが魚ゲージを超えないようにクランプ
+    PlayerGauge = FMath::Clamp(PlayerGauge, 0.f, FishGauge);
+    FishGauge = FMath::Clamp(FishGauge, 1.f, GaugeMax);
+
+    CheckFishBattleState();
+}
+
 void AFishingRodActor::OnFishHitEvent()
 {
     UE_LOG(LogTemp, Warning, TEXT("Rod: HIT 受信"));
+    // --- バトル開始 ---
+    bIsFishBattle = true;
+    bIsReeling = false;
+    bIsCasting = false;
+
+    // 初期ゲージは任意（ここでは半分から開始）
+    PlayerGauge = GaugeMax * 0.4f;
+    FishGauge = GaugeMax * 0.6f;
+
+    // UIやBPへ通知
+    OnStartFishBattle.Broadcast();
+
+    // ルアーはバトル状態へ（移動停止など）
+    if (CurrentLure)
+    {
+        FVector RodTip = RodMesh->GetSocketLocation(TEXT("RodTip"));
+        CurrentLure->SetBeingReeled(false, RodTip);
+    }
+}
+
+void AFishingRodActor::OnReelClick()
+{
+    if (!bIsFishBattle) return;
+
+    // クリックでプレイヤーゲージが上がる（リスク：上げすぎると負ける）
+    PlayerGauge += PlayerGaugeIncreasePerClick;
+    PlayerGauge = FMath::Clamp(PlayerGauge, 0.f, GaugeMax);
+
+    // クリックで魚ゲージも少し上がる（プレイヤーの操作は魚の抵抗も増す想定）
+    FishGauge += FishGaugeIncreasePerClick;
+    FishGauge = FMath::Clamp(FishGauge, 0.f, GaugeMax);
+
+    CheckFishBattleState();
+}
+
+void AFishingRodActor::CheckFishBattleState()
+{
+    if (!bIsFishBattle) return;
+
+    // 失敗条件：プレイヤーのゲージが最大に到達（オーバープレッシャーで切れる）
+    if (PlayerGauge >= GaugeMax)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("FishBattle: Fail - Player gauge max"));
+        EndFishBattle(false);
+        return;
+    }
+
+    // 失敗条件：魚ゲージが 0 になった（魚が疲れ果てて逃げる/ライン切れ）
+    if (FishGauge <= 0.f)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("FishBattle: Fail - Fish gauge 0"));
+        EndFishBattle(false);
+        return;
+    }
+
+    // 失敗条件：プレイヤーゲージが魚ゲージを上回る（プレッシャーでライン切れ）
+    if (PlayerGauge > FishGauge)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("FishBattle: Fail - Player > Fish"));
+        EndFishBattle(false);
+        return;
+    }
+
+    // 成功条件：魚ゲージが満タン（プレイヤーが魚のゲージを最大にして勝つ）
+    if (FishGauge >= GaugeMax)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("FishBattle: Success - Fish gauge max"));
+        EndFishBattle(true);
+        return;
+    }
+}
+
+void AFishingRodActor::EndFishBattle(bool bSuccess)
+{
+    bIsFishBattle = false;
+
+    // UI通知
+    OnEndFishBattle.Broadcast(bSuccess);
+
+    if (bSuccess)
+    {
+        // 魚をスポーン or 既に捕獲済みなら処理
+        SpawnCaughtFish();
+    }
+    else
+    {
+        // 失敗ならルアーをリセット（魚は逃げる）
+        ResetLure();
+    }
+
+    // ゲージリセット（任意）
+    PlayerGauge = 0.f;
+    FishGauge = 0.f;
 }
 
 void AFishingRodActor::OnFishCaught()

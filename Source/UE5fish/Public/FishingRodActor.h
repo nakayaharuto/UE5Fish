@@ -8,6 +8,9 @@
 class ALureActor;
 class AFishActor;
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FFishBattleEvent);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FFishBattleEndEvent, bool, bSuccess);
+
 UCLASS()
 class UE5FISH_API AFishingRodActor : public AActor
 {
@@ -59,6 +62,45 @@ public:
     void SpawnCaughtFish();
     void ResetLure();
 
+    void AdjustPlayerGauge(float DeltaTime);
+
+    // --- 新：2ゲージ バトル用 API ---
+    /** プレイヤーが左クリック（リールクリック）した時に呼ぶ */
+    UFUNCTION()
+    void OnReelClick();
+
+    /** 外部（UIなど）から現在のゲージを参照できるようにする */
+    UPROPERTY(BlueprintReadOnly)
+    float PlayerGauge = 0.f;
+
+    UPROPERTY(BlueprintReadOnly)
+    float FishGauge = 0.f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Battle")
+    float GaugeMax = 100.f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Battle")
+    float PlayerGaugeIncreasePerClick = 12.f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Battle")
+    float FishGaugeIncreasePerClick = 9.f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Battle")
+    float PlayerGaugeDecayRate = 8.f; // /s
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Battle")
+    float FishGaugeDecayRate = 6.f; // /s
+
+    /** バトルフラグ */
+    UPROPERTY(BlueprintReadOnly)
+    bool bIsFishBattle = false;
+
+    /** イベント：バトル開始 / 終了 */
+    UPROPERTY(BlueprintAssignable)
+    FFishBattleEvent OnStartFishBattle;
+
+    UPROPERTY(BlueprintAssignable)
+    FFishBattleEndEvent OnEndFishBattle;
 protected:
     /** 状態フラグ */
     bool bIsCasting = false;
@@ -85,5 +127,9 @@ private:
     FTimerHandle FishBiteTimerHandle;
 
     void OnFishCaught();        // 巻き上げ完了時
+    /** バトル内で勝敗判定 */
+    void CheckFishBattleState();
 
+    /** バトル終了処理 */
+    void EndFishBattle(bool bSuccess);
 };

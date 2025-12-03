@@ -61,6 +61,13 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Fishing")
 	FVector2D CurrentInputDirection;
 
+	//Widget
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI")
+	TSubclassOf<UUserWidget> FishingBattleWidgetClass;
+
+	UPROPERTY()
+	UUserWidget* FishingBattleWidget;
+
 	// 新アクション
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
 	UInputAction* StartCasting;
@@ -103,11 +110,10 @@ protected:
 	/// 入力
 	/// </summary>
 	/// <param name="Value"></param>
-	void Move(const FInputActionValue& Value);
-	void Look(const FInputActionValue& Value);
+	void Move(const FInputActionValue& Value);//移動
+	void Look(const FInputActionValue& Value);//視点
 	void ToggleEquipRod(const FInputActionValue& Value);
 	void StartCastingInput(const FInputActionValue& Value);
-	void ReleaseCastingInput(const FInputActionValue& Value);
 	void StartReelInput(const FInputActionValue& Value);
 	void StopReelInput(const FInputActionValue& Value);
 
@@ -119,6 +125,9 @@ protected:
 
 	/** 釣り中かどうか */
 	bool bIsFishing = false;
+
+	/** 状態が長押しか */
+	bool bIsReelPressed = false;
 
 public:	
 	bool bIsReelingFish = false;
