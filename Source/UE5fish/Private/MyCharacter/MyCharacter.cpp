@@ -6,6 +6,7 @@
 #include "EnhancedInputSubsystems.h"
 #include "InputActionValue.h"
 #include "FishingRodActor.h"
+#include "FishingBattleWidget.h"
 #include "LureActor.h"
 #include "FishActor.h"
 #include "Kismet/GameplayStatics.h"
@@ -77,6 +78,12 @@ void AMyCharacter::BeginPlay()
 		}
 	}
 
+	if (FishingRod)
+	{
+		//イベント
+		FishingRod->OnStartFishBattle.AddDynamic(this, &AMyCharacter::ShowFishingUI);
+		FishingRod->OnEndFishBattle.AddDynamic(this, &AMyCharacter::HideFishingUI);
+	}
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -134,6 +141,25 @@ void AMyCharacter::Look(const FInputActionValue& Value)
 //////////////////////////////////////////////////////////////////////////
 // 釣り関連
 
+void AMyCharacter::ShowFishingUI()
+{
+	if (FishingBattleWidgetClass && !FishingBattleWidget)
+	{
+		FishingBattleWidget = CreateWidget<UFishingBattleWidget>(GetWorld(), FishingBattleWidgetClass);
+		if (FishingBattleWidget)
+			FishingBattleWidget->AddToViewport();
+	}
+}
+
+void AMyCharacter::HideFishingUI(bool bSuccess)
+{
+	if (FishingBattleWidget)
+	{
+		FishingBattleWidget->RemoveFromParent();
+		FishingBattleWidget = nullptr;
+	}
+}
+
 void AMyCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
@@ -144,6 +170,24 @@ void AMyCharacter::Tick(float DeltaTime)
 		{
 			// RodActor 側で Tick 内に長押し処理用メソッドを用意
 			FishingRod->AdjustPlayerGauge(DeltaTime);
+		}
+	}
+
+	if (FishingRod && FishingRod->bIsFishBattle)
+	{
+		// ① 左クリック長押しでプレイヤーゲージ調整
+		if (bIsReelPressed)
+		{
+			FishingRod->AdjustPlayerGauge(DeltaTime);
+		}
+
+		// ② UI にゲージ値を送る
+		if (FishingBattleWidget)
+		{
+			float PlayerPct = FishingRod->PlayerGauge / FishingRod->GaugeMax;
+			float FishPct = FishingRod->FishGauge / FishingRod->GaugeMax;
+
+			FishingBattleWidget->UpdateGauges(PlayerPct, FishPct);
 		}
 	}
 }

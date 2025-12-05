@@ -108,6 +108,7 @@ protected:
     bool bIsFishBiting = false;
     bool bFishCaught = false;
     bool bIsCharging = false;
+    bool bEquipped = false;
     bool Lure = false;
 
 

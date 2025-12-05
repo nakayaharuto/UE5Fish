@@ -11,6 +11,7 @@
 class USpringArmComponent;
 class UCameraComponent;
 class UInputMappingContext;
+class UFishingBattleWidget;
 class UInputAction;
 class ALureActor;
 struct FInputActionValue;
@@ -66,7 +67,7 @@ public:
 	TSubclassOf<UUserWidget> FishingBattleWidgetClass;
 
 	UPROPERTY()
-	UUserWidget* FishingBattleWidget;
+	UFishingBattleWidget* FishingBattleWidget;
 
 	// 新アクション
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
@@ -101,6 +102,9 @@ public:
 	virtual void BeginPlay() override;
 
 	virtual void Tick(float DeltaTime) override;
+
+	void ShowFishingUI();
+	void HideFishingUI(bool bSuccess);
 
 protected:
 	// Called when the game starts or when spawned

@@ -78,38 +78,45 @@ void AFishingRodActor::ResetRodState()
 
 void AFishingRodActor::CastToLocation(const FVector& InTargetLocation)
 {
-    if (bIsCasting || !LureClass) return;
-
+    if (!bEquipped || bIsCasting) return;
     bIsCasting = true;
-    bIsReeling = false;
-    bIsFishBiting = false;
 
-    FVector StartLoc = RodMesh->GetSocketLocation(TEXT("RodTip"));
-    FRotator Rot = (InTargetLocation - StartLoc).Rotation();
+    FVector RodTipLocation = RodMesh->GetSocketLocation(FName("RodTip"));
+    FRotator CastRotation = (InTargetLocation - RodTipLocation).Rotation();
 
-    FActorSpawnParameters Params;
-    Params.Owner = this;
-    Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+    FActorSpawnParameters SpawnParams;
+    SpawnParams.Owner = this;
+    SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
-    CurrentLure = GetWorld()->SpawnActor<ALureActor>(LureClass, StartLoc, Rot, Params);
-    if (CurrentLure)
+    // すでにあるルアーは Reuse する or 消してもOK
+    if (!CurrentLure)
     {
-        CurrentLure->SetActorHiddenInGame(false);
-
-        // LaunchLure に全ての投げ挙動を任せる
-        CurrentLure->LaunchLure(InTargetLocation, CastSpeed);
-
-        if (!CurrentLure->OnFishHit.IsBound())
-            CurrentLure->OnFishHit.AddDynamic(this, &AFishingRodActor::StartReel);
-
-        // 糸接続
-        if (LineCable)
-        {
-            LineCable->SetAttachEndTo(CurrentLure, NAME_None); // ルアーのRootComponentに接続
-            LineCable->CableLength = FVector::Distance(StartLoc, InTargetLocation);
-            LineCable->SetVisibility(true);
-        }
+        CurrentLure = GetWorld()->SpawnActor<ALureActor>(
+            LureClass,
+            RodTipLocation,
+            CastRotation,
+            SpawnParams
+        );
     }
+
+    if (!CurrentLure) return;
+
+    // ケーブル接続をMeshに
+    if (LineCable)
+    {
+        LineCable->SetAttachEndToComponent(CurrentLure->Mesh);
+        LineCable->SetVisibility(true);
+        LineCable->CableLength = FVector::Distance(RodTipLocation, InTargetLocation);
+    }
+
+    // 竿先にリセット
+    CurrentLure->SetActorLocation(RodTipLocation);
+    CurrentLure->Mesh->SetSimulatePhysics(true);
+
+    // UIゲージを使わない場合、CastSpeedを固定値にして飛ばす
+    float FinalCastSpeed = CastSpeed; // 例：1500.f
+    CurrentLure->LaunchLure(InTargetLocation, FinalCastSpeed);
+
 }
 
 void AFishingRodActor::StartReel()
