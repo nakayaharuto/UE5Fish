@@ -46,6 +46,16 @@ void AFishingRodActor::BeginPlay()
     }
 }
 
+void AFishingRodActor::SpawnCaughtFish()
+{
+    UE_LOG(LogTemp, Warning, TEXT("SpawnCaughtFish called"));
+    if (CurrentLure)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("CurrentLure exists so skipping"));
+        return;
+    }
+}
+
 void AFishingRodActor::ResetRodState()
 {
     // ルアーを安全にリセット（Destroyする前にケーブルの参照を解除）
@@ -74,6 +84,32 @@ void AFishingRodActor::ResetRodState()
 
     // 竿を表示状態に（必要であれば）
     SetActorHiddenInGame(false);
+}
+
+void AFishingRodActor::SpawnLure()
+{
+    if (CurrentLure) return;
+
+    FVector RodTip = RodMesh->GetSocketLocation(TEXT("RodTip"));
+    FRotator Rot = RodMesh->GetSocketRotation(TEXT("RodTip"));
+
+    FActorSpawnParameters Params;
+    Params.Owner = this;
+    Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+    CurrentLure = GetWorld()->SpawnActor<ALureActor>(LureClass, RodTip, Rot, Params);
+
+    if (CurrentLure)
+    {
+        CurrentLure->OnFishHit.AddDynamic(this, &AFishingRodActor::OnFishHitEvent);
+
+        if (LineCable)
+        {
+            LineCable->SetAttachEndToComponent(CurrentLure->Mesh);
+            LineCable->SetVisibility(true);
+            LineCable->CableLength = 50.f;
+        }
+    }
 }
 
 void AFishingRodActor::CastToLocation(const FVector& InTargetLocation)
@@ -222,6 +258,8 @@ void AFishingRodActor::Tick(float DeltaTime)
     }
 }
 
+
+
 void AFishingRodActor::ResetLure()
 {
     if (CurrentLure)
@@ -236,24 +274,17 @@ void AFishingRodActor::ResetLure()
     }
 }
 
-void AFishingRodActor::SpawnCaughtFish()
+void AFishingRodActor::InstantCast()
 {
-    if (!FishClass) return;
+    if (!bEquipped || bIsCasting) return;
 
-    FVector Loc = RodMesh->GetSocketLocation(TEXT("RodTip"));
-    FActorSpawnParameters Params;
-    Params.Owner = this;
+    SpawnLure(); // ← まず生成
 
-    CaughtFish = GetWorld()->SpawnActor<AFishActor>(FishClass, Loc, FRotator::ZeroRotator, Params);
+    FVector RodTip = RodMesh->GetSocketLocation(TEXT("RodTip"));
+    FVector Target = RodTip + (RodMesh->GetForwardVector() * 2000.f);
 
-    // ルアー処理とケーブル安全リセット
-    ResetLure();
-    if (LineCable)
-    {
-        LineCable->SetAttachEndTo(nullptr, NAME_None);
-        LineCable->CableLength = 10.f;
-        LineCable->SetVisibility(false);
-    }
+    float FixedCastPower = CastSpeed; // 例: 1500f
+    CastToLocation(Target); // ← 既存の関数を使う
 }
 
 //長押しされた場合
@@ -313,35 +344,27 @@ void AFishingRodActor::CheckFishBattleState()
 {
     if (!bIsFishBattle) return;
 
-    // 失敗条件：プレイヤーのゲージが最大に到達（オーバープレッシャーで切れる）
-    if (PlayerGauge >= GaugeMax)
+    // ① 魚ゲージが 0 → 敗北
+    if (FishGauge <= 0)
     {
-        UE_LOG(LogTemp, Warning, TEXT("FishBattle: Fail - Player gauge max"));
-        EndFishBattle(false);
+        UE_LOG(LogTemp, Warning, TEXT("FAIL: FishGauge reached 0"));
+        EndFishBattle(false);  // false = fail
         return;
     }
 
-    // 失敗条件：魚ゲージが 0 になった（魚が疲れ果てて逃げる/ライン切れ）
-    if (FishGauge <= 0.f)
-    {
-        UE_LOG(LogTemp, Warning, TEXT("FishBattle: Fail - Fish gauge 0"));
-        EndFishBattle(false);
-        return;
-    }
-
-    // 失敗条件：プレイヤーゲージが魚ゲージを上回る（プレッシャーでライン切れ）
-    if (PlayerGauge > FishGauge)
-    {
-        UE_LOG(LogTemp, Warning, TEXT("FishBattle: Fail - Player > Fish"));
-        EndFishBattle(false);
-        return;
-    }
-
-    // 成功条件：魚ゲージが満タン（プレイヤーが魚のゲージを最大にして勝つ）
+    // ② 魚ゲージ MAX → 勝利
     if (FishGauge >= GaugeMax)
     {
-        UE_LOG(LogTemp, Warning, TEXT("FishBattle: Success - Fish gauge max"));
-        EndFishBattle(true);
+        UE_LOG(LogTemp, Warning, TEXT("SUCCESS: FishGauge reached MAX"));
+        EndFishBattle(true);   // true = success
+        return;
+    }
+
+    // ③ プレイヤーゲージ MAX → 敗北
+    if (PlayerGauge >= GaugeMax)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("FAIL: PlayerGauge reached MAX"));
+        EndFishBattle(false);  // false = fail
         return;
     }
 }
@@ -356,7 +379,7 @@ void AFishingRodActor::EndFishBattle(bool bSuccess)
     if (bSuccess)
     {
         // 魚をスポーン or 既に捕獲済みなら処理
-        SpawnCaughtFish();
+        //SpawnCaughtFish();
     }
     else
     {

@@ -21,6 +21,7 @@ public:
     virtual void Tick(float DeltaTime) override;
     virtual void BeginPlay() override;
     void ResetRodState();//釣り竿の状態リセット
+    void InstantCast();
 
     /** 竿メッシュ */
     UPROPERTY(VisibleAnywhere)
@@ -60,6 +61,7 @@ public:
 
     /** ヒット・キャッチ処理 */
     void SpawnCaughtFish();
+    void SpawnLure();
     void ResetLure();
 
     void AdjustPlayerGauge(float DeltaTime);

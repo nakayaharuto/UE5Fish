@@ -101,7 +101,7 @@ void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 		if (FishingAction) EnhancedInput->BindAction(FishingAction, ETriggerEvent::Triggered, this, &AMyCharacter::ToggleEquipRod);
 		
 		//Eキーでキャスト
-		if (StartCasting) EnhancedInput->BindAction(StartCasting, ETriggerEvent::Triggered, this, &AMyCharacter::StartCastingInput);
+		if (StartCasting) EnhancedInput->BindAction(StartCasting, ETriggerEvent::Started, this, &AMyCharacter::StartCastingInput);
 		//if (ReleaseCasting) EnhancedInput->BindAction(ReleaseCasting, ETriggerEvent::Started, this, &AMyCharacter::ReleaseCastingInput);
 		
 		//左クリックでゲージの調整
@@ -164,31 +164,13 @@ void AMyCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	if (bIsFishing && FishingRod && FishingRod->bIsFishBattle)
+	// バトル中のみ UI更新
+	if (FishingRod && FishingRod->bIsFishBattle && FishingBattleWidget)
 	{
-		if (bIsReelPressed)
-		{
-			// RodActor 側で Tick 内に長押し処理用メソッドを用意
-			FishingRod->AdjustPlayerGauge(DeltaTime);
-		}
-	}
+		float PlayerPct = FishingRod->PlayerGauge / FishingRod->GaugeMax;
+		float FishPct = FishingRod->FishGauge / FishingRod->GaugeMax;
 
-	if (FishingRod && FishingRod->bIsFishBattle)
-	{
-		// ① 左クリック長押しでプレイヤーゲージ調整
-		if (bIsReelPressed)
-		{
-			FishingRod->AdjustPlayerGauge(DeltaTime);
-		}
-
-		// ② UI にゲージ値を送る
-		if (FishingBattleWidget)
-		{
-			float PlayerPct = FishingRod->PlayerGauge / FishingRod->GaugeMax;
-			float FishPct = FishingRod->FishGauge / FishingRod->GaugeMax;
-
-			FishingBattleWidget->UpdateGauges(PlayerPct, FishPct);
-		}
+		FishingBattleWidget->UpdateGauges(PlayerPct, FishPct);
 	}
 }
 
