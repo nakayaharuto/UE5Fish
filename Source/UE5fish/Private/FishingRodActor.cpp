@@ -38,12 +38,6 @@ AFishingRodActor::AFishingRodActor()
 void AFishingRodActor::BeginPlay()
 {
     Super::BeginPlay();
-
-
-    if (CurrentLure)
-    {
-        CurrentLure->OnFishHit.AddDynamic(this, &AFishingRodActor::OnFishHitEvent);
-    }
 }
 
 void AFishingRodActor::SpawnCaughtFish()
@@ -82,6 +76,9 @@ void AFishingRodActor::ResetRodState()
         LineCable->SetVisibility(false);
     }
 
+    // ルアーを安全にリセット（Destroyする前にケーブルの参照を解除）
+    ResetLure();
+
     // 竿を表示状態に（必要であれば）
     SetActorHiddenInGame(false);
 }
@@ -114,6 +111,7 @@ void AFishingRodActor::SpawnLure()
 
 void AFishingRodActor::CastToLocation(const FVector& InTargetLocation)
 {
+    UE_LOG(LogTemp, Warning, TEXT("Rod: CastToLocation ENTRY POINT. bEquipped: %d, bIsCasting: %d"), bEquipped, bIsCasting);
     if (!bEquipped || bIsCasting) return;
     bIsCasting = true;
 
@@ -133,6 +131,11 @@ void AFishingRodActor::CastToLocation(const FVector& InTargetLocation)
             CastRotation,
             SpawnParams
         );
+
+        if (CurrentLure)
+        {
+            CurrentLure->OnFishHit.AddDynamic(this, &AFishingRodActor::OnFishHitEvent);
+        }
     }
 
     if (!CurrentLure) return;
@@ -151,6 +154,11 @@ void AFishingRodActor::CastToLocation(const FVector& InTargetLocation)
 
     // UIゲージを使わない場合、CastSpeedを固定値にして飛ばす
     float FinalCastSpeed = CastSpeed; // 例：1500.f
+
+    UE_LOG(LogTemp, Warning, TEXT("Rod: CastToLocation called. FinalCastSpeed is: %f"), FinalCastSpeed);
+
+    if (!CurrentLure) return; // CurrentLure が NULL でないか再確認の目印にもなる
+
     CurrentLure->LaunchLure(InTargetLocation, FinalCastSpeed);
 
 }
@@ -278,12 +286,9 @@ void AFishingRodActor::InstantCast()
 {
     if (!bEquipped || bIsCasting) return;
 
-    SpawnLure(); // ← まず生成
-
     FVector RodTip = RodMesh->GetSocketLocation(TEXT("RodTip"));
     FVector Target = RodTip + (RodMesh->GetForwardVector() * 2000.f);
 
-    float FixedCastPower = CastSpeed; // 例: 1500f
     CastToLocation(Target); // ← 既存の関数を使う
 }
 

@@ -165,6 +165,13 @@ void AMyCharacter::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 
 	// バトル中のみ UI更新
+	if (bIsReelPressed && FishingRod && FishingRod->bIsFishBattle)
+	{
+		// DeltaTime を渡すことで、フレームレートに関係なく一定の速度でゲージが増える
+		FishingRod->AdjustPlayerGauge(DeltaTime);
+	}
+
+	// バトル中のみ UI更新
 	if (FishingRod && FishingRod->bIsFishBattle && FishingBattleWidget)
 	{
 		float PlayerPct = FishingRod->PlayerGauge / FishingRod->GaugeMax;
@@ -185,6 +192,8 @@ void AMyCharacter::ToggleFishingRod(bool bEquip)
 	bIsFishing = !bIsFishing;
 	if (FishingRod)
 	{
+		FishingRod->bEquipped = bEquip; // 竿アクターのbEquippedを更新
+
 		if (bIsFishing)
 		{
 			// 🎣 釣り開始 → 初期化
@@ -208,6 +217,8 @@ void AMyCharacter::ToggleFishingRod(bool bEquip)
 void AMyCharacter::StartCastingInput(const FInputActionValue& Value)
 {
 	if (!bIsFishing || !FishingRod) return;
+
+	//UE_LOG(LogTemp, Warning, TEXT("Character: StartCastingInput called. IsFishing: %d, Rod Valid: %d"), bIsFishing, (FishingRod != nullptr));
 
 	FVector CamLoc = FishingCamera->GetComponentLocation();
 	FVector CamDir = FishingCamera->GetForwardVector();

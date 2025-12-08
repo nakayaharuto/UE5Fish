@@ -96,15 +96,17 @@ public:
 	UPROPERTY(VisibleAnywhere)
 	UCameraComponent* FishingCamera;
 
+	UFUNCTION()
+	void ShowFishingUI();
+	UFUNCTION()
+	void HideFishingUI(bool bSuccess);
+
 public:
 	// Sets default values for this character's properties
 	AMyCharacter();
 	virtual void BeginPlay() override;
 
 	virtual void Tick(float DeltaTime) override;
-
-	void ShowFishingUI();
-	void HideFishingUI(bool bSuccess);
 
 protected:
 	// Called when the game starts or when spawned

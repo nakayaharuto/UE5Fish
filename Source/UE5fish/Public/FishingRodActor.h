@@ -51,6 +51,7 @@ public:
     void OnFishHitEvent();
 
     /** ルアーをキャスト */
+    UFUNCTION(BlueprintCallable)
     void CastToLocation(const FVector& TargetLocation);
 
     /** 巻き取り開始・停止 */
@@ -59,11 +60,18 @@ public:
     UFUNCTION()
     void StopReel();
 
+    UPROPERTY(EditAnywhere, BlueprintReadWrite) // BPから設定したいなら
+    bool bEquipped = false;
+
     /** ヒット・キャッチ処理 */
+    UFUNCTION()
     void SpawnCaughtFish();
+    UFUNCTION()
     void SpawnLure();
+    UFUNCTION()
     void ResetLure();
 
+    UFUNCTION()
     void AdjustPlayerGauge(float DeltaTime);
 
     // --- 新：2ゲージ バトル用 API ---
@@ -110,7 +118,6 @@ protected:
     bool bIsFishBiting = false;
     bool bFishCaught = false;
     bool bIsCharging = false;
-    bool bEquipped = false;
     bool Lure = false;
 
 
