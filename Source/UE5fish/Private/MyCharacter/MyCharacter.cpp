@@ -164,6 +164,7 @@ void AMyCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+
 	// バトル中のみ UI更新
 	if (bIsReelPressed && FishingRod && FishingRod->bIsFishBattle)
 	{
@@ -216,7 +217,7 @@ void AMyCharacter::ToggleFishingRod(bool bEquip)
 
 void AMyCharacter::StartCastingInput(const FInputActionValue& Value)
 {
-	if (!bIsFishing || !FishingRod) return;
+	if (!bIsFishing) return;
 
 	//UE_LOG(LogTemp, Warning, TEXT("Character: StartCastingInput called. IsFishing: %d, Rod Valid: %d"), bIsFishing, (FishingRod != nullptr));
 
@@ -238,18 +239,20 @@ void AMyCharacter::StartReelInput(const FInputActionValue& Value)
 {
 	bIsReelPressed = true;
 	// 左クリックに対応：バトル中はゲージクリックを呼ぶ
-	if (FishingRod)
+	if (!FishingRod) return;
+
+	if (FishingRod->bIsFishBattle)
 	{
-		if (FishingRod->bIsFishBattle)
-		{
-			FishingRod->OnReelClick();
-		}
-		else
-		{
-			// 釣り中でバトル中でなければ従来の StartReel を呼ぶ（必要なら）
-			FishingRod->StartReel();
-		}
+		// 2. バトル中は継続処理（Tick）に任せるため、単発の OnReelClick は削除/コメントアウト
+		// FishingRod->OnReelClick(); 
 	}
+	else
+	{
+		// 3. 非バトル時: ルアーの巻き取り開始のみを行う
+		// ⚠️ ここからキャスト処理が呼ばれないように、AFishingRodActor::StartReel() の中身を確認してください。
+		FishingRod->StartReel();
+	}
+
 }
 
 void AMyCharacter::StopReelInput(const FInputActionValue& Value)

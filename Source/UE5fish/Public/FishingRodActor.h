@@ -123,6 +123,7 @@ public:
 
     UPROPERTY(BlueprintAssignable)
     FFishBattleEndEvent OnEndFishBattle;
+
 protected:
     /** 状態フラグ */
     bool bIsCasting = false;
@@ -130,6 +131,7 @@ protected:
     bool bIsFishBiting = false;
     bool bFishCaught = false;
     bool bIsCharging = false;
+    bool bIsPlayerReeling = false;
     bool Lure = false;
 
 
@@ -144,6 +146,8 @@ protected:
     float MaxCastCharge = 3.0f;            // 最大チャージ時間（秒など）
     UPROPERTY(EditAnywhere, Category = "Casting")
     float CastChargeRate = 1.0f;           // チャージ速度（増加率）
+
+    
 
 private:
     FTimerHandle FishBiteTimerHandle;

@@ -28,6 +28,13 @@ void AFishActor::ShowFish()
     GetWorldTimerManager().SetTimer(HideTimerHandle, this, &AFishActor::HideFish, 3.f, false);
 }
 
+float AFishActor::GetCurrentDynamicResistance(float CurrentFishGauge, float GaugeMax) const
+{
+    // ’ïR—Í = Šî–{’ïR + ƒQ[ƒWŠ„‡ * Å‘å‘‰ÁŒW”
+    float DynamicResistance = BaseResistance + (CurrentFishGauge / GaugeMax) * MaxResistanceMultiplier;
+    return DynamicResistance;
+}
+
 void AFishActor::HideFish()
 {
     Mesh->SetVisibility(false);

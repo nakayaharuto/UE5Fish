@@ -43,13 +43,6 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* LookAction;
 
-	//釣り竿
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Fishing, meta = (AllowPrivateAccess = "true"))
-	AFishingRodActor* FishingRod;
-
-	//ルアー
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Fishing, meta = (AllowPrivateAccess = "true"))
-	ALureActor* LureActor;
 
 	//アクション
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
@@ -109,7 +102,13 @@ public:
 	virtual void Tick(float DeltaTime) override;
 
 protected:
-	// Called when the game starts or when spawned
+	//釣り竿
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Fishing, meta = (AllowPrivateAccess = "true"))
+	AFishingRodActor* FishingRod;
+
+	//ルアー
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Fishing, meta = (AllowPrivateAccess = "true"))
+	ALureActor* LureActor;
 
 
 	/// <summary>

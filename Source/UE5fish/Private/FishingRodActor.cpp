@@ -1,6 +1,7 @@
 ﻿#include "FishingRodActor.h"
 #include "LureActor.h"
 #include "FishActor.h"
+#include "Engine/EngineTypes.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Kismet/GameplayStatics.h"
 
@@ -177,7 +178,11 @@ void AFishingRodActor::StartReel()
         UE_LOG(LogTemp, Warning, TEXT("Fish attached to lure because reel started!"));
     }
 
-    bIsReeling = false;
+    // 自動リールアップ中は、プレイヤーの手動入力を無視するガード
+    if (bIsReeling)
+    {
+        return;
+    }
 
     FVector RodTip = RodMesh->GetSocketLocation(TEXT("RodTip"));
     CurrentLure->SetBeingReeled(true, RodTip);
@@ -198,39 +203,35 @@ void AFishingRodActor::StopReel()
 
 void AFishingRodActor::ReelProgress(float DeltaTime)
 {
-    if (!bIsFishBattle)
-    {
-        return;
-    }
+    if (!bIsFishBattle) return;
 
-    // 魚の抵抗力を動的に計算 (実装が必要な関数)
+   
+    // 魚の抵抗力を動的に計算 (PlayerGaugeの計算にのみ使用)
     float DynamicResistance = CalculateFishResistance();
 
-    // プレイヤーの力 (PlayerReelPower) と 魚の抵抗 (DynamicResistance) の差分でゲージを増減させる
-    // プレイヤーの力は PlayerReelPower を使う想定
+    // プレイヤーゲージの増減計算 (抵抗の影響はそのまま残す - 中央合わせ難易度の源)
     float GaugeChange = (PlayerReelPower - DynamicResistance) * DeltaTime;
-
-    // ゲージ増減の適用
     PlayerGauge += GaugeChange;
-
-    // ゲージ値をクランプ
     PlayerGauge = FMath::Clamp(PlayerGauge, 0.0f, GaugeMax);
+
+    // 🐠 魚ゲージの調整 (純粋な増加ロジック)
+
+    // 1. 中央合わせボーナス計算 (PlayerGaugeの位置による効率ボーナス)
+    float CenterDeviation = FMath::Abs(PlayerGauge - (GaugeMax / 2.0f));
+    float MaxDeviation = GaugeMax / 2.0f;
+    float CenterBonus = 1.0f - (CenterDeviation / MaxDeviation); // 中央で最大1.0、端で最小0.0
+
+    // 2. 魚ゲージの増加計算 (抵抗力に関係なく、長押し入力があったら増加させる)
+    float ReelSpeed = 5.0f; // 巻き取り速度 (調整用)
+
+    float CenterBoostMultiplier = 10.0f;    //中央合わせでのボーナスの強さ
+
+    float FinalReelSpeed = ReelSpeed + (CenterBonus * CenterBoostMultiplier);
+    // プレイヤーが中央にいるほど効率よく巻ける
+    FishGauge += FinalReelSpeed * DeltaTime;
 
     // UIの更新 (実装が必要な関数)
     UpdateBattleGaugeUI(PlayerGauge, GaugeMax);
-
-    // 終了判定
-    if (PlayerGauge >= GaugeMax)
-    {
-        // 釣り上げ成功！
-        EndFishBattle(true);
-    }
-    // ここでは PlayerGauge が 0 になると敗北とする (ラインブレイク/魚逃走)
-    else if (PlayerGauge <= 0.0f)
-    {
-        // 逃げられた/ラインブレイク！
-        EndFishBattle(false);
-    }
 }
 
 void AFishingRodActor::Tick(float DeltaTime)
@@ -268,17 +269,20 @@ void AFishingRodActor::Tick(float DeltaTime)
             {
                 CurrentLure->SetActorLocation(RodTip);
             }
-            bIsReeling = false;
+          
 
             if (bIsFishBiting && IsValid(CaughtFish))
             {
                 OnFishCaught(); // 🎣 魚を釣り上げる処理
             }
-
+           
             if (IsValid(CurrentLure))
             {
                 CurrentLure->SetBeingReeled(false, RodTip);
             }
+
+            //リールフラグをオフ
+            bIsReeling = false;
         }
     }
 
@@ -292,13 +296,24 @@ void AFishingRodActor::Tick(float DeltaTime)
     // --- 🟩 バトル中のゲージ時間経過 ---
     if (bIsFishBattle)
     {
-        // 減衰
-        PlayerGauge -= PlayerGaugeDecayRate * DeltaTime;
-        FishGauge -= FishGaugeDecayRate * DeltaTime;
+        // 1. プレイヤーゲージの減衰 (変更なし)
+        if (!bIsPlayerReeling)
+        {
+            PlayerGauge -= PlayerGaugeDecayRate * DeltaTime;
+        }
 
+        // 2. 魚ゲージの純粋な減少ロジック
+        if (!bIsPlayerReeling)
+        {
+            float FishDecayRate = 2.0f; // 魚ゲージの自然減衰速度 (調整用)
+            FishGauge -= FishDecayRate * DeltaTime;
+        }
+
+        // 3. 全ゲージのクランプ
         PlayerGauge = FMath::Clamp(PlayerGauge, 0.f, GaugeMax);
         FishGauge = FMath::Clamp(FishGauge, 0.f, GaugeMax);
 
+        // 4. 終了判定
         CheckFishBattleState();
     }
 }
@@ -306,13 +321,14 @@ void AFishingRodActor::Tick(float DeltaTime)
 // 魚の抵抗力を計算
 float AFishingRodActor::CalculateFishResistance()
 {
-    float BaseResistance = 5.0f; // 基本抵抗力
-    float TensionMultiplier = 15.0f; // 最大時の抵抗係数
-
-    // 魚ゲージが高いほど抵抗力が高くなるロジック (例)
-    float DynamicResistance = BaseResistance + (FishGauge / GaugeMax) * TensionMultiplier;
-
-    return DynamicResistance;
+    // 釣れた魚の参照が存在することを確認 (CaughtFishをAMyFishActor型で保持していると仮定)
+    if (CaughtFish)
+    {
+        // 魚オブジェクトに計算を委譲
+        return CaughtFish->GetCurrentDynamicResistance(FishGauge, GaugeMax);
+    }
+    // 魚がいない場合のデフォルト値
+    return 1.0f;
 }
 
 void AFishingRodActor::ResetLure()
@@ -347,9 +363,11 @@ void AFishingRodActor::OnFishHitEvent()
     bIsReeling = false;
     bIsCasting = false;
 
+
+    float InitialGaugePercentage = 0.15f;
     // 初期ゲージは任意（ここでは半分から開始）
-    PlayerGauge = GaugeMax * 0.4f;
-    FishGauge = GaugeMax * 0.6f;
+    PlayerGauge = GaugeMax * InitialGaugePercentage;
+    FishGauge = GaugeMax * InitialGaugePercentage;
 
     // UIやBPへ通知
     OnStartFishBattle.Broadcast();
@@ -381,27 +399,31 @@ void AFishingRodActor::CheckFishBattleState()
 {
     if (!bIsFishBattle) return;
 
-    // ① 魚ゲージが 0 → 敗北
-    if (FishGauge <= 0)
-    {
-        UE_LOG(LogTemp, Warning, TEXT("FAIL: FishGauge reached 0"));
-        EndFishBattle(false);  // false = fail
-        return;
-    }
-
-    // ② 魚ゲージ MAX → 勝利
+    // 勝利判定: 魚ゲージが MAX になった（リールを巻ききった！）
     if (FishGauge >= GaugeMax)
     {
-        UE_LOG(LogTemp, Warning, TEXT("SUCCESS: FishGauge reached MAX"));
-        EndFishBattle(true);   // true = success
+        EndFishBattle(true);
         return;
     }
 
-    // ③ プレイヤーゲージ MAX → 敗北
+    // 敗北判定 1: プレイヤーゲージが 0 になった（魚に逃げられた）
+    if (PlayerGauge <= 0.0f)
+    {
+        EndFishBattle(false);
+        return;
+    }
+
+    // 敗北判定 2: プレイヤーゲージが MAX になった（ラインブレイク）
     if (PlayerGauge >= GaugeMax)
     {
-        UE_LOG(LogTemp, Warning, TEXT("FAIL: PlayerGauge reached MAX"));
-        EndFishBattle(false);  // false = fail
+        EndFishBattle(false);
+        return;
+    }
+
+    // 敗北判定 3:魚ゲージが 0 になった（魚に逃げられた）
+    if (FishGauge <= 0.0f)
+    {
+        EndFishBattle(false);
         return;
     }
 }
@@ -415,19 +437,32 @@ void AFishingRodActor::UpdateBattleGaugeUI(float CurrentValue, float MaxValue)
 void AFishingRodActor::EndFishBattle(bool bSuccess)
 {
     bIsFishBattle = false;
+    bIsPlayerReeling = false;
 
     // UI通知
     OnEndFishBattle.Broadcast(bSuccess);
 
     if (bSuccess)
     {
-        // 魚をスポーン or 既に捕獲済みなら処理
-        //SpawnCaughtFish();
+        // 成功の場合、リールアップを開始し、ルアーを竿先まで引き戻す
+        if (CurrentLure)
+        {
+            // 魚は OnFishCaught で処理されるため、ルアーだけリールアップ
+            bIsReeling = true;
+        }
     }
     else
     {
-        // 失敗ならルアーをリセット（魚は逃げる）
-        ResetLure();
+        // 失敗の場合もリールアップ処理を行う
+        if (CurrentLure)
+        {
+            bIsReeling = true;
+        }
+        else
+        {
+            // CurrentLure が NULL の場合は即時リセット
+            ResetLure();
+        }
     }
 
     // ゲージリセット（任意）
@@ -437,15 +472,32 @@ void AFishingRodActor::EndFishBattle(bool bSuccess)
 
 void AFishingRodActor::OnFishCaught()
 {
-    bFishCaught = true;
-    bIsFishBiting = false;
+    if (!IsValid(CaughtFish) || !bIsFishBattle)return;
+
+    bFishCaught = true;     //成功フラグ
+    bIsFishBattle = false; // 釣りバトル終了
+    bIsPlayerReeling = false;
+    // 自動リールアップを開始するフラグを立てる
+    bIsReeling = true;
+    bIsFishBiting = false;  //バトルフラグをリセット
+ 
+    FAttachmentTransformRules WorldRules(
+        EAttachmentRule::KeepWorld, // 位置のルール
+        EAttachmentRule::KeepWorld, // 回転のルール
+        EAttachmentRule::KeepWorld, // スケールのルール
+        false                       // ウェルディングの有効/無効
+    );
 
     if (CaughtFish)
     {
         // 魚を一時的に竿の先に表示
         CaughtFish->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
         FVector RodTip = RodMesh->GetSocketLocation(TEXT("RodTip"));
-        CaughtFish->SetActorLocation(RodTip);
+        CaughtFish->AttachToComponent(
+            RodMesh, // 親コンポーネント (竿のメッシュ)
+            WorldRules, // ワールド座標を維持
+            FName(TEXT("RodTip")) // 竿先のソケット名
+        );
         CaughtFish->ShowFish();
     }
 
