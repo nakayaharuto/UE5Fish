@@ -105,7 +105,7 @@ void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 		//if (ReleaseCasting) EnhancedInput->BindAction(ReleaseCasting, ETriggerEvent::Started, this, &AMyCharacter::ReleaseCastingInput);
 		
 		//左クリックでゲージの調整
-		if (StartReel) EnhancedInput->BindAction(StartReel, ETriggerEvent::Triggered, this, &AMyCharacter::StartReelInput);
+		if (StartReel) EnhancedInput->BindAction(StartReel, ETriggerEvent::Started, this, &AMyCharacter::StartReelInput);
 		if (StopReel) EnhancedInput->BindAction(StopReel, ETriggerEvent::Completed, this, &AMyCharacter::StopReelInput);
 	}
 }
@@ -168,7 +168,7 @@ void AMyCharacter::Tick(float DeltaTime)
 	if (bIsReelPressed && FishingRod && FishingRod->bIsFishBattle)
 	{
 		// DeltaTime を渡すことで、フレームレートに関係なく一定の速度でゲージが増える
-		FishingRod->AdjustPlayerGauge(DeltaTime);
+		FishingRod->ReelProgress(DeltaTime);
 	}
 
 	// バトル中のみ UI更新

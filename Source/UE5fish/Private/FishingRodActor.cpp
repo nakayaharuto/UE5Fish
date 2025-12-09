@@ -196,6 +196,43 @@ void AFishingRodActor::StopReel()
     return;
 }
 
+void AFishingRodActor::ReelProgress(float DeltaTime)
+{
+    if (!bIsFishBattle)
+    {
+        return;
+    }
+
+    // 魚の抵抗力を動的に計算 (実装が必要な関数)
+    float DynamicResistance = CalculateFishResistance();
+
+    // プレイヤーの力 (PlayerReelPower) と 魚の抵抗 (DynamicResistance) の差分でゲージを増減させる
+    // プレイヤーの力は PlayerReelPower を使う想定
+    float GaugeChange = (PlayerReelPower - DynamicResistance) * DeltaTime;
+
+    // ゲージ増減の適用
+    PlayerGauge += GaugeChange;
+
+    // ゲージ値をクランプ
+    PlayerGauge = FMath::Clamp(PlayerGauge, 0.0f, GaugeMax);
+
+    // UIの更新 (実装が必要な関数)
+    UpdateBattleGaugeUI(PlayerGauge, GaugeMax);
+
+    // 終了判定
+    if (PlayerGauge >= GaugeMax)
+    {
+        // 釣り上げ成功！
+        EndFishBattle(true);
+    }
+    // ここでは PlayerGauge が 0 になると敗北とする (ラインブレイク/魚逃走)
+    else if (PlayerGauge <= 0.0f)
+    {
+        // 逃げられた/ラインブレイク！
+        EndFishBattle(false);
+    }
+}
+
 void AFishingRodActor::Tick(float DeltaTime)
 {
     Super::Tick(DeltaTime);
@@ -266,7 +303,17 @@ void AFishingRodActor::Tick(float DeltaTime)
     }
 }
 
+// 魚の抵抗力を計算
+float AFishingRodActor::CalculateFishResistance()
+{
+    float BaseResistance = 5.0f; // 基本抵抗力
+    float TensionMultiplier = 15.0f; // 最大時の抵抗係数
 
+    // 魚ゲージが高いほど抵抗力が高くなるロジック (例)
+    float DynamicResistance = BaseResistance + (FishGauge / GaugeMax) * TensionMultiplier;
+
+    return DynamicResistance;
+}
 
 void AFishingRodActor::ResetLure()
 {
@@ -290,21 +337,6 @@ void AFishingRodActor::InstantCast()
     FVector Target = RodTip + (RodMesh->GetForwardVector() * 2000.f);
 
     CastToLocation(Target); // ← 既存の関数を使う
-}
-
-//長押しされた場合
-void AFishingRodActor::AdjustPlayerGauge(float DeltaTime)
-{
-    if (!bIsFishBattle) return;
-
-    PlayerGauge += PlayerGaugeIncreasePerClick * DeltaTime; // 秒単位で増加
-    FishGauge += FishGaugeIncreasePerClick * DeltaTime;
-
-    // プレイヤーゲージが魚ゲージを超えないようにクランプ
-    PlayerGauge = FMath::Clamp(PlayerGauge, 0.f, FishGauge);
-    FishGauge = FMath::Clamp(FishGauge, 1.f, GaugeMax);
-
-    CheckFishBattleState();
 }
 
 void AFishingRodActor::OnFishHitEvent()
@@ -372,6 +404,12 @@ void AFishingRodActor::CheckFishBattleState()
         EndFishBattle(false);  // false = fail
         return;
     }
+}
+
+void AFishingRodActor::UpdateBattleGaugeUI(float CurrentValue, float MaxValue)
+{
+    // デバッグログで値を確認する (一時的な処理)
+    UE_LOG(LogTemp, Log, TEXT("UI Update: Gauge = %.2f / %.2f"), CurrentValue, MaxValue);
 }
 
 void AFishingRodActor::EndFishBattle(bool bSuccess)

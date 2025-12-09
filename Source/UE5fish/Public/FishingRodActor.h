@@ -72,7 +72,7 @@ public:
     void ResetLure();
 
     UFUNCTION()
-    void AdjustPlayerGauge(float DeltaTime);
+    void ReelProgress(float DeltaTime);
 
     // --- 新：2ゲージ バトル用 API ---
     /** プレイヤーが左クリック（リールクリック）した時に呼ぶ */
@@ -101,9 +101,21 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Battle")
     float FishGaugeDecayRate = 6.f; // /s
 
-    /** バトルフラグ */
-    UPROPERTY(BlueprintReadOnly)
+    // バトル中かどうか
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Fishing|Battle")
     bool bIsFishBattle = false;
+
+    // プレイヤーのリール力 (毎秒のゲージ増加ポテンシャル)
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Fishing|Battle")
+    float PlayerReelPower = 15.0f;
+
+    // プレイヤーの現在のゲージ値
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Fishing|Battle")
+    float CurrentPlayerGauge = 0.0f;
+
+    // ゲージの最大値
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Fishing|Battle")
+    float MaxGaugeValue = 100.0f;
 
     /** イベント：バトル開始 / 終了 */
     UPROPERTY(BlueprintAssignable)
@@ -142,4 +154,9 @@ private:
 
     /** バトル終了処理 */
     void EndFishBattle(bool bSuccess);
+
+    float CalculateFishResistance();
+
+    /** UIを更新する関数（ゲージの値をBP/ウィジェットに送る） */
+    void UpdateBattleGaugeUI(float CurrentValue, float MaxValue);
 };

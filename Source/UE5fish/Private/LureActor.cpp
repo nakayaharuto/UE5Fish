@@ -16,7 +16,11 @@ ALureActor::ALureActor()
     Mesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Mesh"));
     RootComponent = Mesh;
     
-
+    Mesh->BodyInstance.bUseCCD = true;
+    Mesh->SetCollisionProfileName(TEXT("PhysicsActor"));
+    Mesh->SetMassOverrideInKg(NAME_None, 0.2f);
+    Mesh->SetLinearDamping(0.05f);
+    Mesh->SetAngularDamping(0.05f);
     Mesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
     Mesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Block);
     Mesh->SetCollisionObjectType(ECC_PhysicsBody);
@@ -34,12 +38,6 @@ void ALureActor::BeginPlay()
 {
     Super::BeginPlay();
 
-    Mesh->BodyInstance.bUseCCD = true;
-    Mesh->SetSimulatePhysics(true);
-    Mesh->SetCollisionProfileName(TEXT("PhysicsActor"));
-    Mesh->SetMassOverrideInKg(NAME_None, 0.2f);
-    Mesh->SetLinearDamping(0.05f);
-    Mesh->SetAngularDamping(0.05f);
 }
 
 void ALureActor::LaunchLure(const FVector& InTarget, float InSpeed)

@@ -23,7 +23,7 @@ public:
 
 protected:
 	//éQè∆
-	UPROPERTY(meta = (BindWiget))
+	UPROPERTY(meta = (BindWidget))
 	UProgressBar* PlayerGaugeBar;
 
 	UPROPERTY(meta = (BindWidget))
