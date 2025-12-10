@@ -10,6 +10,7 @@ class AFishActor;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FFishBattleEvent);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FFishBattleEndEvent, bool, bSuccess);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnFishCaughtUI, AFishActor*, CaughtFishActor); // または FText, float など
 
 UCLASS()
 class UE5FISH_API AFishingRodActor : public AActor
@@ -46,6 +47,10 @@ public:
     /** 魚クラス */
     UPROPERTY(EditAnywhere)
     TSubclassOf<AFishActor> FishClass;
+
+    /** 魚表示ウィジェット */
+    UPROPERTY(BlueprintAssignable)
+    FOnFishCaughtUI OnFishCaughtUI;
 
     UFUNCTION()
     void OnFishHitEvent();

@@ -450,6 +450,10 @@ void AFishingRodActor::EndFishBattle(bool bSuccess)
             // 魚は OnFishCaught で処理されるため、ルアーだけリールアップ
             bIsReeling = true;
         }
+        if (CaughtFish)
+        {
+            OnFishCaughtUI.Broadcast(CaughtFish); // CaughtFish をウィジェットに渡す
+        }
     }
     else
     {
@@ -481,26 +485,11 @@ void AFishingRodActor::OnFishCaught()
     bIsReeling = true;
     bIsFishBiting = false;  //バトルフラグをリセット
  
-    FAttachmentTransformRules WorldRules(
-        EAttachmentRule::KeepWorld, // 位置のルール
-        EAttachmentRule::KeepWorld, // 回転のルール
-        EAttachmentRule::KeepWorld, // スケールのルール
-        false                       // ウェルディングの有効/無効
-    );
-
-    if (CaughtFish)
+    // 魚アクターはここで破棄
+    if (IsValid(CaughtFish))
     {
-        // 魚を一時的に竿の先に表示
-        CaughtFish->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
-        FVector RodTip = RodMesh->GetSocketLocation(TEXT("RodTip"));
-        CaughtFish->AttachToComponent(
-            RodMesh, // 親コンポーネント (竿のメッシュ)
-            WorldRules, // ワールド座標を維持
-            FName(TEXT("RodTip")) // 竿先のソケット名
-        );
-        CaughtFish->ShowFish();
+        CaughtFish->Destroy();
+        CaughtFish = nullptr;
     }
 
-    // ルアー削除
-    ResetLure();
 }

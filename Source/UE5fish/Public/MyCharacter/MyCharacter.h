@@ -94,6 +94,11 @@ public:
 	UFUNCTION()
 	void HideFishingUI(bool bSuccess);
 
+	UFUNCTION()
+	void ShowCaughtFishWidget(AFishActor* CaughtFishActor);
+
+
+
 public:
 	// Sets default values for this character's properties
 	AMyCharacter();

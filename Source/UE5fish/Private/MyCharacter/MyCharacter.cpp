@@ -83,6 +83,9 @@ void AMyCharacter::BeginPlay()
 		//イベント
 		FishingRod->OnStartFishBattle.AddDynamic(this, &AMyCharacter::ShowFishingUI);
 		FishingRod->OnEndFishBattle.AddDynamic(this, &AMyCharacter::HideFishingUI);
+
+		//魚ゲット UI イベントのバインド
+		FishingRod->OnFishCaughtUI.AddDynamic(this, &AMyCharacter::ShowCaughtFishWidget);
 	}
 }
 
@@ -260,4 +263,28 @@ void AMyCharacter::StopReelInput(const FInputActionValue& Value)
 	bIsReelPressed = false;
 	if (FishingRod)
 		FishingRod->StopReel();
+}
+
+void AMyCharacter::ShowCaughtFishWidget(AFishActor* CaughtFishActor)
+{
+	// ここで、CaughtFishActor の情報（名前、サイズ、画像など）を使って、
+	// 魚ゲット専用のウィジェット (UUserWidget) を作成し、ビューポートに追加します。
+
+	// 例:
+	// if (CaughtFishWidgetClass)
+	// {
+	//     UCaughtFishWidget* CaughtWidget = CreateWidget<UCaughtFishWidget>(GetWorld(), CaughtFishWidgetClass);
+	//     if (CaughtWidget)
+	//     {
+	//         CaughtWidget->SetFishData(CaughtFishActor); // 魚のデータを渡す
+	//         CaughtWidget->AddToViewport();
+	//     }
+	// }
+
+	// 成功した魚アクターは、ここで破棄しても良い
+	if (IsValid(CaughtFishActor))
+	{
+		// 竿側で既に破棄されているはずですが、念のため
+		// CaughtFishActor->Destroy();
+	}
 }
