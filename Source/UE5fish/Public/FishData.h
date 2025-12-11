@@ -1,0 +1,44 @@
+// Fill out your copyright notice in the Description page of Project Settings.
+
+#pragma once
+#include "CoreMinimal.h"
+#include "Engine/DataTable.h"
+#include "FishData.generated.h"
+
+// 釣れる魚の静的な情報を格納する構造体
+USTRUCT(BlueprintType)
+struct FFishingFishData : public FTableRowBase
+{
+	GENERATED_BODY()
+
+public:
+	
+	//魚の種類認識のID
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Fish")
+	FName FishID;
+
+	//魚の表示名
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Fish")
+	FText FishName;
+
+	//難易度や基礎地
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Fish")
+	float BaseResistance;
+
+	//釣りバトルでの最大抵抗力の増加係数
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Fish")
+	float MaxResistanceMultiplier;
+
+	//UIで表示するための画像（テクスチャ）
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI")
+	class UTexture2D* UITexture;
+
+	//ゲーム内のメッシュアセット
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Mesh")
+	class UStaticMesh* FishMesh;
+
+	//希少度 (レアリティ)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Fish")
+	int32 Rarity;
+
+};
