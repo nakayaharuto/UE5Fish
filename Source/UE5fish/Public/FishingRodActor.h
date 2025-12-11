@@ -52,6 +52,10 @@ public:
     UPROPERTY(BlueprintAssignable)
     FOnFishCaughtUI OnFishCaughtUI;
 
+    // データテーブルアセットへの参照
+    UPROPERTY(EditDefaultsOnly, Category = "Fishing Data")
+    class UDataTable* FishDataTable;
+
     UFUNCTION()
     void OnFishHitEvent();
 
@@ -75,6 +79,8 @@ public:
     void SpawnLure();
     UFUNCTION()
     void ResetLure();
+    UFUNCTION()
+    void SpawnFish();
 
     UFUNCTION()
     void ReelProgress(float DeltaTime);
@@ -129,6 +135,13 @@ public:
     UPROPERTY(BlueprintAssignable)
     FFishBattleEndEvent OnEndFishBattle;
 
+    void SetFishData(
+        const FString& Name,
+        float Size,
+        int32 Rarity,
+        class UStaticMesh* FishMesh // ★ 4つの引数に限定
+    );
+
 protected:
     /** 状態フラグ */
     bool bIsCasting = false;
@@ -152,7 +165,7 @@ protected:
     UPROPERTY(EditAnywhere, Category = "Casting")
     float CastChargeRate = 1.0f;           // チャージ速度（増加率）
 
-    
+   
 
 private:
     FTimerHandle FishBiteTimerHandle;

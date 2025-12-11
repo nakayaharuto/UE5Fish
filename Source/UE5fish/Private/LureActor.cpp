@@ -97,6 +97,7 @@ void ALureActor::SpawnHitFish()
 
 void ALureActor::SetBeingReeled(bool bReeling, const FVector& ReelTargetIn)
 {
+    UE_LOG(LogTemp, Warning, TEXT("Lure::SetBeingReeled called. bReeling: %s"), bReeling ? TEXT("True") : TEXT("False"));
     bIsBeingReeled = bReeling;
     ReelTarget = ReelTargetIn;
 

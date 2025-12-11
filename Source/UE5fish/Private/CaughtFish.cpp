@@ -4,11 +4,37 @@
 #include "CaughtFish.h"
 
 
-void UCaughtFish::SetCaughtFishData(AFishActor* CaughtFishActor)
+bool UCaughtFish::Initialize()
 {
-    /*if (!IsValid(CaughtFishActor))
+    bool Success = Super::Initialize();
+    if (!Success) return false;
+
+    return true;
+}
+
+void UCaughtFish::SetFishData(AFishActor* CaughtFish)
+{
+    if (!CaughtFish) return;
+
+    // 魚のデータを使って UI テキストを更新
+    // (AFishActorに FishName, SizeCm, Rarity が定義されている前提)
+
+    if (Text_FishName)
     {
-        // 魚が無効な場合のエラー処理
-        return;
-    }*/
-};
+        Text_FishName->SetText(FText::FromString(CaughtFish->FishName));
+    }
+
+    if (Text_Size)
+    {
+        // float を FText に変換 (例: "12.5 cm")
+        FString SizeString = FString::Printf(TEXT("%.1f cm"), CaughtFish->SizeCm);
+        Text_Size->SetText(FText::FromString(SizeString));
+    }
+
+    if (Text_Rarity)
+    {
+        // Rarity を FText に変換
+        FString RarityString = FString::Printf(TEXT("レア度: %d"), CaughtFish->Rarity);
+        Text_Rarity->SetText(FText::FromString(RarityString));
+    }
+}

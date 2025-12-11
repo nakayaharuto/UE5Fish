@@ -86,6 +86,8 @@ void AMyCharacter::BeginPlay()
 
 		//魚ゲット UI イベントのバインド
 		FishingRod->OnFishCaughtUI.AddDynamic(this, &AMyCharacter::ShowCaughtFishWidget);
+		
+		FishingRod->OnFishCaughtUI.AddDynamic(this, &AMyCharacter::HandleFishCaught);
 	}
 }
 
@@ -241,28 +243,12 @@ void AMyCharacter::StartCastingInput(const FInputActionValue& Value)
 void AMyCharacter::StartReelInput(const FInputActionValue& Value)
 {
 	bIsReelPressed = true;
-	// 左クリックに対応：バトル中はゲージクリックを呼ぶ
-	if (!FishingRod) return;
-
-	if (FishingRod->bIsFishBattle)
-	{
-		// 2. バトル中は継続処理（Tick）に任せるため、単発の OnReelClick は削除/コメントアウト
-		// FishingRod->OnReelClick(); 
-	}
-	else
-	{
-		// 3. 非バトル時: ルアーの巻き取り開始のみを行う
-		// ⚠️ ここからキャスト処理が呼ばれないように、AFishingRodActor::StartReel() の中身を確認してください。
-		FishingRod->StartReel();
-	}
-
 }
 
 void AMyCharacter::StopReelInput(const FInputActionValue& Value)
 {
 	bIsReelPressed = false;
-	if (FishingRod)
-		FishingRod->StopReel();
+	
 }
 
 void AMyCharacter::ShowCaughtFishWidget(AFishActor* CaughtFishActor)
@@ -286,5 +272,32 @@ void AMyCharacter::ShowCaughtFishWidget(AFishActor* CaughtFishActor)
 	{
 		// 竿側で既に破棄されているはずですが、念のため
 		// CaughtFishActor->Destroy();
+	}
+}
+
+void AMyCharacter::HandleFishCaught(AFishActor* CaughtFish)
+{
+	if (!CaughtFishClass) return;
+
+	// 既にウィジェットが表示されていたら破棄などを行う（省略）
+
+	// 1. ウィジェットの生成
+	APlayerController* PC = GetController<APlayerController>();
+	if (PC)
+	{
+		CurrentCaughtFishWidget = CreateWidget<UCaughtFish>(PC, CaughtFishClass);
+
+		if (CurrentCaughtFishWidget)
+		{
+			// 2. データをウィジェットに設定
+			CurrentCaughtFishWidget->SetFishData(CaughtFish);
+
+			// 3. 画面に表示
+			CurrentCaughtFishWidget->AddToViewport();
+
+			// 4. マウスカーソルを表示し、入力モードをUIに設定するなど（必要であれば）
+			// PC->SetInputMode(FInputModeUIOnly()); 
+			// PC->bShowMouseCursor = true;
+		}
 	}
 }

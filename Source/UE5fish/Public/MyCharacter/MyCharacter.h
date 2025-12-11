@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "InputActionValue.h"
+#include "CaughtFish.h"
 #include "MyCharacter.generated.h"
 
 
@@ -16,6 +17,7 @@ class UInputAction;
 class ALureActor;
 struct FInputActionValue;
 class AFishingRodActor;
+class UCaughtFish;
 
 
 UCLASS()
@@ -42,7 +44,6 @@ public:
 	//視点アクション
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* LookAction;
-
 
 	//アクション
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
@@ -91,13 +92,23 @@ public:
 
 	UFUNCTION()
 	void ShowFishingUI();
+
 	UFUNCTION()
 	void HideFishingUI(bool bSuccess);
 
 	UFUNCTION()
 	void ShowCaughtFishWidget(AFishActor* CaughtFishActor);
 
+	// UIウィジェットのクラスリファレンス
+	UPROPERTY(EditDefaultsOnly, Category = "UI")
+	TSubclassOf<class UCaughtFish> CaughtFishClass;
 
+	// 釣果結果を表示するウィジェットのインスタンス
+	UPROPERTY()
+	UCaughtFish* CurrentCaughtFishWidget;
+	// 釣果イベントを受け取る関数
+	UFUNCTION()
+	void HandleFishCaught(AFishActor* CaughtFish);
 
 public:
 	// Sets default values for this character's properties
@@ -114,6 +125,8 @@ protected:
 	//ルアー
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Fishing, meta = (AllowPrivateAccess = "true"))
 	ALureActor* LureActor;
+
+	
 
 
 	/// <summary>
@@ -143,7 +156,7 @@ public:
 	bool bIsReelingFish = false;
 protected:
 
-	//virtual void NotifyControllerChanged() override;
+
 
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;

@@ -36,9 +36,20 @@ public:
     //抵抗力を計算し返す関数
     float GetCurrentDynamicResistance(float CurrentFishGauge, float GaugeMax) const;
 
+    // 魚が持っているべきデータ
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FishData")
+    FString FishName;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FishData")
+    float SizeCm; // 大きさ
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FishData")
+    int32 FishRarity; // レア度 (1:コモン, 5:レジェンドなど)
 
     void ShowFish();
     void HideFish();
+
+    void SetFishData(const FString& Name, float Size, int32 Rarity, class UStaticMesh* FishMesh, float PlayerGaugeDecay);
 
 protected:
     virtual void BeginPlay() override;

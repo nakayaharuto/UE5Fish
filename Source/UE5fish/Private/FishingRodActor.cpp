@@ -1,7 +1,9 @@
 ﻿#include "FishingRodActor.h"
 #include "LureActor.h"
 #include "FishActor.h"
+#include "FishDataTypes.h"
 #include "Engine/EngineTypes.h"
+#include "Engine/DataTable.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Kismet/GameplayStatics.h"
 
@@ -166,6 +168,7 @@ void AFishingRodActor::CastToLocation(const FVector& InTargetLocation)
 
 void AFishingRodActor::StartReel()
 {
+    UE_LOG(LogTemp, Warning, TEXT("いり"));
     if (!CurrentLure || bFishCaught) return;
     if (IsValid(CurrentLure->HitFish))
     {
@@ -176,12 +179,6 @@ void AFishingRodActor::StartReel()
         );
 
         UE_LOG(LogTemp, Warning, TEXT("Fish attached to lure because reel started!"));
-    }
-
-    // 自動リールアップ中は、プレイヤーの手動入力を無視するガード
-    if (bIsReeling)
-    {
-        return;
     }
 
     FVector RodTip = RodMesh->GetSocketLocation(TEXT("RodTip"));
@@ -358,6 +355,14 @@ void AFishingRodActor::InstantCast()
 void AFishingRodActor::OnFishHitEvent()
 {
     UE_LOG(LogTemp, Warning, TEXT("Rod: HIT 受信"));
+
+    if (!IsValid(CaughtFish))
+    {
+        // 魚データテーブルを参照し、ランダムな魚をスポーンさせる
+        // FishActorのスポーンと、そのパラメータ（サイズ、レア度など）の設定を行います。
+        SpawnFish();
+    }
+
     // --- バトル開始 ---
     bIsFishBattle = true;
     bIsReeling = false;
@@ -399,6 +404,14 @@ void AFishingRodActor::CheckFishBattleState()
 {
     if (!bIsFishBattle) return;
 
+    // 敗北判定 2: プレイヤーゲージが MAX になった（ラインブレイク）
+    if (PlayerGauge >= GaugeMax)
+    {
+        UE_LOG(LogTemp, Error, TEXT("LINE BREAK! EndBattle(false) called."));
+        EndFishBattle(false);
+        return;
+    }
+
     // 勝利判定: 魚ゲージが MAX になった（リールを巻ききった！）
     if (FishGauge >= GaugeMax)
     {
@@ -408,13 +421,6 @@ void AFishingRodActor::CheckFishBattleState()
 
     // 敗北判定 1: プレイヤーゲージが 0 になった（魚に逃げられた）
     if (PlayerGauge <= 0.0f)
-    {
-        EndFishBattle(false);
-        return;
-    }
-
-    // 敗北判定 2: プレイヤーゲージが MAX になった（ラインブレイク）
-    if (PlayerGauge >= GaugeMax)
     {
         EndFishBattle(false);
         return;
@@ -436,7 +442,6 @@ void AFishingRodActor::UpdateBattleGaugeUI(float CurrentValue, float MaxValue)
 
 void AFishingRodActor::EndFishBattle(bool bSuccess)
 {
-    bIsFishBattle = false;
     bIsPlayerReeling = false;
 
     // UI通知
@@ -449,6 +454,8 @@ void AFishingRodActor::EndFishBattle(bool bSuccess)
         {
             // 魚は OnFishCaught で処理されるため、ルアーだけリールアップ
             bIsReeling = true;
+            StartReel();
+           
         }
         if (CaughtFish)
         {
@@ -461,6 +468,8 @@ void AFishingRodActor::EndFishBattle(bool bSuccess)
         if (CurrentLure)
         {
             bIsReeling = true;
+            //UE_LOG(LogTemp, Warning, TEXT("来てます！来てますよぉ！"));
+            StartReel();
         }
         else
         {
@@ -468,6 +477,7 @@ void AFishingRodActor::EndFishBattle(bool bSuccess)
             ResetLure();
         }
     }
+    bIsFishBattle = false;
 
     // ゲージリセット（任意）
     PlayerGauge = 0.f;
@@ -492,4 +502,76 @@ void AFishingRodActor::OnFishCaught()
         CaughtFish = nullptr;
     }
 
+}
+
+void AFishingRodActor::SpawnFish()
+{
+    // データテーブルとスポーン対象クラスの基本的なチェック
+    if (!FishDataTable || !FishClass)
+    {
+        UE_LOG(LogTemp, Error, TEXT("SpawnFish failed: FishDataTable or FishClass is missing."));
+        return;
+    }
+
+    // 1. データテーブルから全行を取得
+    TArray<FFishData*> AllRows;
+    // FFishData が定義されているヘッダーをインクルードしている必要があります
+    FishDataTable->GetAllRows<FFishData>(TEXT(""), AllRows);
+
+    if (AllRows.Num() == 0)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("SpawnFish failed: FishDataTable contains no rows."));
+        return;
+    }
+
+    // 2. 確率や重み付けに基づき、ランダムな魚を選択
+    const FFishData* SelectedFishData = AllRows[FMath::RandRange(0, AllRows.Num() - 1)];
+
+    if (SelectedFishData)
+    {
+        // 3. サイズの決定 (MinSizeとMaxSizeの間でランダム)
+        float ActualSize = FMath::FRandRange(SelectedFishData->MinSize, SelectedFishData->MaxSize);
+
+        // 4. スポーン位置と回転の決定 (ルアーが存在すればルアーの位置)
+        FVector SpawnLocation = CurrentLure ? CurrentLure->GetActorLocation() : GetActorLocation();
+        FRotator SpawnRotation = CurrentLure ? CurrentLure->GetActorRotation() : GetActorRotation();
+
+        FActorSpawnParameters Params;
+        Params.Owner = this;
+        Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+        // AFishActor をスポーンし、CaughtFish に代入
+        CaughtFish = GetWorld()->SpawnActor<AFishActor>(FishClass, SpawnLocation, SpawnRotation, Params);
+
+        if (CaughtFish)
+        {
+            // メッシュアセットの同期ロード
+            class UStaticMesh* FishMesh = SelectedFishData->FishMeshAsset.LoadSynchronous();
+
+            // A. SetFishData を呼び出し、魚の基本情報を設定
+            // SetFishData の引数定義は、この5つに合うように AFishActor.h で宣言が必要です。
+            CaughtFish->SetFishData(
+                SelectedFishData->Name,
+                ActualSize,
+                SelectedFishData->Rarity,
+                FishMesh, // USkeletalMesh*
+                SelectedFishData->PlayerGaugeDecayContribution
+            );
+
+            // B. 抵抗値関連のプロパティは、SetFishData内で設定するか、
+            //    FFishDataにプロパティを追加して直接設定します。
+            //    (この FFishData 構造体には BaseResistance, MaxResistanceMultiplier は含まれていないため、
+            //     これらの値は AFishActor のデフォルト値に依存することになります。)
+
+            // 例外: FFishData にある Decay 係数を、AFishActor の UPROPERTY に直接設定
+            // AFishActor::PlayerGaugeDecayContribution が UPROPERTY であることが前提
+            CaughtFish->PlayerGaugeDecayContribution = SelectedFishData->PlayerGaugeDecayContribution;
+
+            UE_LOG(LogTemp, Warning, TEXT("Fish Spawned: %s (Size: %.1f cm)"), *SelectedFishData->Name, ActualSize);
+        }
+        else
+        {
+            UE_LOG(LogTemp, Error, TEXT("Failed to spawn AFishActor."));
+        }
+    }
 }
