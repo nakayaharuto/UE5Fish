@@ -16,14 +16,18 @@ class UE5FISH_API UCaughtFish : public UUserWidget
 {
 	GENERATED_BODY()
 	
+	
+
 public:
 	UFUNCTION(BlueprintCallable, Category = "Fish Data")
-	void SetCaughtFishData(AFishActor CaughtFishActor);
+	void SetCaughtFishData(AFishActor* CaughtFishActor);
 
 
 private:
 
 	FText FishName;
 	float FishSize;
+
+	
 	
 };

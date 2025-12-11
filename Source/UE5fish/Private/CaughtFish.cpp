@@ -6,9 +6,9 @@
 
 void UCaughtFish::SetCaughtFishData(AFishActor* CaughtFishActor)
 {
-    if (!IsValid(CaughtFishActor))
+    /*if (!IsValid(CaughtFishActor))
     {
         // ‹›‚ª–³Œø‚Èê‡‚ÌƒGƒ‰[ˆ—
         return;
-    }
+    }*/
 };
