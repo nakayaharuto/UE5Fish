@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "FishActor.generated.h"
 
 UCLASS()
@@ -13,7 +14,7 @@ class UE5FISH_API AFishActor : public AActor
     UPROPERTY(VisibleAnywhere)
     UStaticMeshComponent* Mesh;
 
-   
+    
 
   
 public:
@@ -46,16 +47,22 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FishData")
     int32 FishRarity; // レア度 (1:コモン, 5:レジェンドなど)
 
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FishData")
+    class UTexture2D* UITexture;
+
     void ShowFish();
     void HideFish();
 
-    void SetFishData(const FString& Name, float Size, int32 Rarity, class UStaticMesh* FishMesh, float PlayerGaugeDecay);
+    void SetFishData(const FString& Name, float Size, int32 Rarity, class USkeletalMesh* FishMesh, float PlayerGaugeDecay);
 
 protected:
     virtual void BeginPlay() override;
 
-    
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Fish")
+    class USkeletalMeshComponent* FishMeshComponent;
 
 private:
     FTimerHandle HideTimerHandle;
+
+   
 };

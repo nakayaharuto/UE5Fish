@@ -19,7 +19,7 @@ public:
 
 	//魚の表示名
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Fish")
-	FText FishName;
+	FString FishName;
 
 	//難易度や基礎地
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Fish")
@@ -33,12 +33,22 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI")
 	class UTexture2D* UITexture;
 
-	//ゲーム内のメッシュアセット
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Mesh")
-	class UStaticMesh* FishMesh;
+	// 表示する魚のモデルアセット (SkeletalMeshまたはStaticMesh)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Assets")
+	TSoftObjectPtr<class USkeletalMesh> FishMeshAsset;
+
+	// 最小サイズ (cm)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
+	float MinSize;
+
+	// 最大サイズ (cm)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
+	float MaxSize;
 
 	//希少度 (レアリティ)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Fish")
 	int32 Rarity;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Fish")
+	float PlayerGaugeDecayContribution;
 };

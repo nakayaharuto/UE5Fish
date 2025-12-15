@@ -5,6 +5,7 @@
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "InputActionValue.h"
+#include "CaughtFish.h"
 #include "FishingRodActor.h"
 #include "FishingBattleWidget.h"
 #include "LureActor.h"
@@ -85,7 +86,7 @@ void AMyCharacter::BeginPlay()
 		FishingRod->OnEndFishBattle.AddDynamic(this, &AMyCharacter::HideFishingUI);
 
 		//魚ゲット UI イベントのバインド
-		FishingRod->OnFishCaughtUI.AddDynamic(this, &AMyCharacter::ShowCaughtFishWidget);
+		//FishingRod->OnFishCaughtUI.AddDynamic(this, &AMyCharacter::ShowCaughtFishWidget);
 		
 		FishingRod->OnFishCaughtUI.AddDynamic(this, &AMyCharacter::HandleFishCaught);
 	}
@@ -268,36 +269,72 @@ void AMyCharacter::ShowCaughtFishWidget(AFishActor* CaughtFishActor)
 	// }
 
 	// 成功した魚アクターは、ここで破棄しても良い
-	if (IsValid(CaughtFishActor))
-	{
-		// 竿側で既に破棄されているはずですが、念のため
-		// CaughtFishActor->Destroy();
-	}
+	//if (IsValid(CaughtFishActor))
+	//{
+	//	// 竿側で既に破棄されているはずですが、念のため
+	//	// CaughtFishActor->Destroy();
+	//}
 }
 
 void AMyCharacter::HandleFishCaught(AFishActor* CaughtFish)
 {
-	if (!CaughtFishClass) return;
-
-	// 既にウィジェットが表示されていたら破棄などを行う（省略）
-
-	// 1. ウィジェットの生成
 	APlayerController* PC = GetController<APlayerController>();
+	if (!CaughtFishWidgetClass)
+	{
+		UE_LOG(LogTemp, Error, TEXT("UI Error: CaughtFishWidgetClass is NULL. (Blueprintで設定されていません)"));
+	}
+	if (!PC)
+	{
+		UE_LOG(LogTemp, Error, TEXT("UI Error: PlayerController (PC) is NULL."));
+	}
+	if (!IsValid(CaughtFish))
+	{
+		UE_LOG(LogTemp, Error, TEXT("UI Error: CaughtFish (釣れた魚アクター) is invalid."));
+	}
+
+	// 既にウィジェットが表示中の場合は、一度破棄してから再作成
+	if (CurrentCaughtFishWidget && CurrentCaughtFishWidget->IsInViewport())
+	{
+		CurrentCaughtFishWidget->RemoveFromParent();
+		CurrentCaughtFishWidget = nullptr;
+	}
+
+	// 2. ウィジェットの生成
+	// CaughtFishWidgetClass は TSubclassOf<class UCaughtFish> で宣言されているはずです。
+	CurrentCaughtFishWidget = CreateWidget<UCaughtFish>(PC, CaughtFishWidgetClass);
+
+	if (CurrentCaughtFishWidget)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("UI LOG: Successfully created CaughtFish widget."));
+
+		// 3. データをウィジェットに設定
+		CurrentCaughtFishWidget->SetFishData(CaughtFish);
+
+		// 4. 画面に表示
+		CurrentCaughtFishWidget->AddToViewport();
+
+		// 5. 入力モードの切り替え (推奨)
+		FInputModeUIOnly InputMode;
+		InputMode.SetWidgetToFocus(CurrentCaughtFishWidget->TakeWidget());
+		PC->SetInputMode(InputMode);
+		PC->bShowMouseCursor = true;
+	}
+}
+
+void AMyCharacter::CloseCaughtFishUI()
+{
+	APlayerController* PC = GetController<APlayerController>();
+
+	if (CurrentCaughtFishWidget)
+	{
+		CurrentCaughtFishWidget->RemoveFromParent();
+		CurrentCaughtFishWidget = nullptr;
+	}
+
 	if (PC)
 	{
-		CurrentCaughtFishWidget = CreateWidget<UCaughtFish>(PC, CaughtFishClass);
-
-		if (CurrentCaughtFishWidget)
-		{
-			// 2. データをウィジェットに設定
-			CurrentCaughtFishWidget->SetFishData(CaughtFish);
-
-			// 3. 画面に表示
-			CurrentCaughtFishWidget->AddToViewport();
-
-			// 4. マウスカーソルを表示し、入力モードをUIに設定するなど（必要であれば）
-			// PC->SetInputMode(FInputModeUIOnly()); 
-			// PC->bShowMouseCursor = true;
-		}
+		// 入力モードをゲームプレイのみに戻す
+		PC->SetInputMode(FInputModeGameOnly());
+		PC->bShowMouseCursor = false;
 	}
 }

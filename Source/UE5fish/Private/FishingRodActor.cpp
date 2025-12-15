@@ -1,7 +1,8 @@
 ﻿#include "FishingRodActor.h"
 #include "LureActor.h"
+#include "MyCharacter/MyCharacter.h"
 #include "FishActor.h"
-#include "FishDataTypes.h"
+#include "FishData.h"
 #include "Engine/EngineTypes.h"
 #include "Engine/DataTable.h"
 #include "Components/SkeletalMeshComponent.h"
@@ -77,6 +78,12 @@ void AFishingRodActor::ResetRodState()
         LineCable->SetAttachEndTo(nullptr, NAME_None);
         LineCable->CableLength = 30.f;
         LineCable->SetVisibility(false);
+    }
+
+    if (CaughtFish)
+    {
+        CaughtFish->Destroy();
+        CaughtFish = nullptr;
     }
 
     // ルアーを安全にリセット（Destroyする前にケーブルの参照を解除）
@@ -457,9 +464,14 @@ void AFishingRodActor::EndFishBattle(bool bSuccess)
             StartReel();
            
         }
-        if (CaughtFish)
+        if(APlayerController * PC = UGameplayStatics::GetPlayerController(this, 0))
         {
-            OnFishCaughtUI.Broadcast(CaughtFish); // CaughtFish をウィジェットに渡す
+            if (AMyCharacter* MyChar = Cast<AMyCharacter>(PC->GetPawn()))
+            {
+                // 魚アクターのインスタンスを渡す
+                UE_LOG(LogTemp, Warning, TEXT("SUCCESS: Notifying Character to HandleFishCaught."));
+                MyChar->HandleFishCaught(CaughtFish);
+            }
         }
     }
     else
@@ -494,14 +506,6 @@ void AFishingRodActor::OnFishCaught()
     // 自動リールアップを開始するフラグを立てる
     bIsReeling = true;
     bIsFishBiting = false;  //バトルフラグをリセット
- 
-    // 魚アクターはここで破棄
-    if (IsValid(CaughtFish))
-    {
-        CaughtFish->Destroy();
-        CaughtFish = nullptr;
-    }
-
 }
 
 void AFishingRodActor::SpawnFish()
@@ -514,9 +518,9 @@ void AFishingRodActor::SpawnFish()
     }
 
     // 1. データテーブルから全行を取得
-    TArray<FFishData*> AllRows;
+    TArray<FFishingFishData*> AllRows;
     // FFishData が定義されているヘッダーをインクルードしている必要があります
-    FishDataTable->GetAllRows<FFishData>(TEXT(""), AllRows);
+    FishDataTable->GetAllRows<FFishingFishData>(TEXT(""), AllRows);
 
     if (AllRows.Num() == 0)
     {
@@ -525,7 +529,7 @@ void AFishingRodActor::SpawnFish()
     }
 
     // 2. 確率や重み付けに基づき、ランダムな魚を選択
-    const FFishData* SelectedFishData = AllRows[FMath::RandRange(0, AllRows.Num() - 1)];
+    const FFishingFishData* SelectedFishData = AllRows[FMath::RandRange(0, AllRows.Num() - 1)];
 
     if (SelectedFishData)
     {
@@ -546,12 +550,12 @@ void AFishingRodActor::SpawnFish()
         if (CaughtFish)
         {
             // メッシュアセットの同期ロード
-            class UStaticMesh* FishMesh = SelectedFishData->FishMeshAsset.LoadSynchronous();
+            class USkeletalMesh* FishMesh = SelectedFishData->FishMeshAsset.LoadSynchronous();
 
             // A. SetFishData を呼び出し、魚の基本情報を設定
             // SetFishData の引数定義は、この5つに合うように AFishActor.h で宣言が必要です。
             CaughtFish->SetFishData(
-                SelectedFishData->Name,
+                SelectedFishData->FishName,
                 ActualSize,
                 SelectedFishData->Rarity,
                 FishMesh, // USkeletalMesh*
@@ -567,7 +571,7 @@ void AFishingRodActor::SpawnFish()
             // AFishActor::PlayerGaugeDecayContribution が UPROPERTY であることが前提
             CaughtFish->PlayerGaugeDecayContribution = SelectedFishData->PlayerGaugeDecayContribution;
 
-            UE_LOG(LogTemp, Warning, TEXT("Fish Spawned: %s (Size: %.1f cm)"), *SelectedFishData->Name, ActualSize);
+            UE_LOG(LogTemp, Warning, TEXT("Fish Spawned: %s (Size: %.1f cm)"), *SelectedFishData->FishName, ActualSize);
         }
         else
         {

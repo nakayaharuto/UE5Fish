@@ -144,7 +144,7 @@ void ALureActor::ResetLure()
     // 魚がいたら消す（今回の優先は表示→消去）
     if (HitFish)
     {
-        HitFish->Destroy();
+        //HitFish->Destroy();
         HitFish = nullptr;
     }
 
@@ -155,7 +155,7 @@ void ALureActor::ResetLure()
     // 所有者の竿があれば初期化をお願いする（Owner は AFishingRodActor）
     if (AFishingRodActor* Rod = Cast<AFishingRodActor>(GetOwner()))
     {
-        Rod->ResetRodState();
+        //Rod->ResetRodState();
     }
 
    
@@ -220,15 +220,14 @@ void ALureActor::ReelStep(float DeltaTime)
         // 魚がついていれば消す（まずは見た目優先）
         if (HitFish)
         {
-            //HitFish->Destroy();
-            HitFish = nullptr;
+            
         }
 
         // 竿の初期化を呼ぶ（所有者が竿のはず）
         if (AFishingRodActor* Rod = Cast<AFishingRodActor>(GetOwner()))
         {
             // 竿内部でケーブルを切り離したり表示を隠したり ResetRodState をやる
-            Rod->ResetRodState();
+            //Rod->ResetRodState();
         }
 
         return;

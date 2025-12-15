@@ -14,6 +14,7 @@ class UCameraComponent;
 class UInputMappingContext;
 class UFishingBattleWidget;
 class UInputAction;
+class AFishActor;
 class ALureActor;
 struct FInputActionValue;
 class AFishingRodActor;
@@ -56,9 +57,10 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Fishing")
 	FVector2D CurrentInputDirection;
 
-	//Widget
+	//Widge
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI")
-	TSubclassOf<UUserWidget> FishingBattleWidgetClass;
+	TSubclassOf<class UFishingBattleWidget> FishingBattleWidgetClass;
 
 	UPROPERTY()
 	UFishingBattleWidget* FishingBattleWidget;
@@ -103,12 +105,18 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
 	TSubclassOf<class UCaughtFish> CaughtFishClass;
 
+	UPROPERTY(EditDefaultsOnly, Category = "Fishing UI")
+	TSubclassOf<class UCaughtFish> CaughtFishWidgetClass;
+
 	// 釣果結果を表示するウィジェットのインスタンス
 	UPROPERTY()
 	UCaughtFish* CurrentCaughtFishWidget;
 	// 釣果イベントを受け取る関数
-	UFUNCTION()
-	void HandleFishCaught(AFishActor* CaughtFish);
+	UFUNCTION(BlueprintCallable, Category = "Fishing")
+	void HandleFishCaught(AFishActor* InCaughtFish);
+
+	UFUNCTION(BlueprintCallable, Category = "Fishing UI")
+	void CloseCaughtFishUI();
 
 public:
 	// Sets default values for this character's properties

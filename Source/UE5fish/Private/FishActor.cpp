@@ -47,7 +47,7 @@ void AFishActor::Tick(float DeletaTime)
 
 }
 
-void AFishActor::SetFishData(const FString& Name, float Size, int32 Rarity, class UStaticMesh* FishMesh, float PlayerGaugeDecay)
+void AFishActor::SetFishData(const FString& Name, float Size, int32 Rarity, class USkeletalMesh* FishMesh, float PlayerGaugeDecay)
 {
     FishName = Name;
     SizeCm = Size;
@@ -59,7 +59,7 @@ void AFishActor::SetFishData(const FString& Name, float Size, int32 Rarity, clas
     if (Mesh && FishMesh)
     {
         // 外部から渡された UStaticMesh をコンポーネントに設定
-        Mesh->SetStaticMesh(FishMesh);
+        FishMeshComponent->SetSkeletalMesh(FishMesh);
 
         // サイズに応じたスケール調整
         // 例: 50cm を基準スケール 1.0 とした場合

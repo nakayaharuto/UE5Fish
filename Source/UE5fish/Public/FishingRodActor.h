@@ -52,6 +52,12 @@ public:
     UPROPERTY(BlueprintAssignable)
     FOnFishCaughtUI OnFishCaughtUI;
 
+    UPROPERTY(BlueprintAssignable)
+    FFishBattleEvent OnStartFishBattle;
+
+    UPROPERTY(BlueprintAssignable)
+    FFishBattleEndEvent OnEndFishBattle;
+
     // データテーブルアセットへの参照
     UPROPERTY(EditDefaultsOnly, Category = "Fishing Data")
     class UDataTable* FishDataTable;
@@ -127,13 +133,6 @@ public:
     // ゲージの最大値
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Fishing|Battle")
     float MaxGaugeValue = 100.0f;
-
-    /** イベント：バトル開始 / 終了 */
-    UPROPERTY(BlueprintAssignable)
-    FFishBattleEvent OnStartFishBattle;
-
-    UPROPERTY(BlueprintAssignable)
-    FFishBattleEndEvent OnEndFishBattle;
 
     void SetFishData(
         const FString& Name,
