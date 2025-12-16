@@ -276,7 +276,7 @@ void AMyCharacter::ShowCaughtFishWidget(AFishActor* CaughtFishActor)
 	//}
 }
 
-void AMyCharacter::HandleFishCaught(AFishActor* CaughtFish)
+void AMyCharacter::HandleFishCaught(FText FishName, float Size, UTexture2D* FishImage, int32 Rarity)
 {
 	APlayerController* PC = GetController<APlayerController>();
 	if (!CaughtFishWidgetClass)
@@ -286,10 +286,6 @@ void AMyCharacter::HandleFishCaught(AFishActor* CaughtFish)
 	if (!PC)
 	{
 		UE_LOG(LogTemp, Error, TEXT("UI Error: PlayerController (PC) is NULL."));
-	}
-	if (!IsValid(CaughtFish))
-	{
-		UE_LOG(LogTemp, Error, TEXT("UI Error: CaughtFish (釣れた魚アクター) is invalid."));
 	}
 
 	// 既にウィジェットが表示中の場合は、一度破棄してから再作成
@@ -308,7 +304,7 @@ void AMyCharacter::HandleFishCaught(AFishActor* CaughtFish)
 		UE_LOG(LogTemp, Warning, TEXT("UI LOG: Successfully created CaughtFish widget."));
 
 		// 3. データをウィジェットに設定
-		CurrentCaughtFishWidget->SetFishData(CaughtFish);
+		CurrentCaughtFishWidget->SetFishData(FishName, Size, FishImage, Rarity);
 
 		// 4. 画面に表示
 		CurrentCaughtFishWidget->AddToViewport();

@@ -10,7 +10,7 @@ class AFishActor;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FFishBattleEvent);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FFishBattleEndEvent, bool, bSuccess);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnFishCaughtUI, AFishActor*, CaughtFishActor); // または FText, float など
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_FourParams(FOnFishCaughtUI, FText, FishName, float, Size, UTexture2D*, FishImage, int32, Rarity);
 
 UCLASS()
 class UE5FISH_API AFishingRodActor : public AActor
@@ -49,7 +49,7 @@ public:
     TSubclassOf<AFishActor> FishClass;
 
     /** 魚表示ウィジェット */
-    UPROPERTY(BlueprintAssignable)
+    UPROPERTY(BlueprintAssignable, Category = "Fishing")
     FOnFishCaughtUI OnFishCaughtUI;
 
     UPROPERTY(BlueprintAssignable)
@@ -129,6 +129,15 @@ public:
     // プレイヤーの現在のゲージ値
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Fishing|Battle")
     float CurrentPlayerGauge = 0.0f;
+    //魚ゲージの基本巻き取り速度
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Battle")
+    float BaseReelSpeed = 3.0f;
+    //中央合わせボーナスの強さ
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Battle")
+    float CenterBoostMultiplier = 10.0f;
+    //進行度ボーナスの最大値
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Battle")
+    float MaxProgressiveBoost = 8.0f;
 
     // ゲージの最大値
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Fishing|Battle")
@@ -138,7 +147,9 @@ public:
         const FString& Name,
         float Size,
         int32 Rarity,
-        class UStaticMesh* FishMesh // ★ 4つの引数に限定
+        float PlayerGaugeDecayContribution,
+        float BaseResistance,
+        float MaxResistanceMultiplier
     );
 
 protected:

@@ -23,43 +23,41 @@ bool UCaughtFish::Initialize()
     return true;
 }
 
-void UCaughtFish::SetFishData(AFishActor* Fish)
+void UCaughtFish::SetFishData(FText FishName, float Size, UTexture2D* FishImage, int32 Rarity)
 {
-    if (!IsValid(Fish))
-    {
-        UE_LOG(LogTemp, Error, TEXT("UCaughtFish::SetFishData failed: Passed FishActor is invalid/NULL."));
-        // 処理を中断し、クラッシュを防ぐ
-        return;
-    }
-
-    CurrentFishActor = Fish; // 魚アクターを保持
-
     // 魚のデータを使って UI テキストを更新
     // (AFishActorに FishName, SizeCm, Rarity が定義されている前提)
 
     if (Text_FishName)
     {
-        UE_LOG(LogTemp, Warning, TEXT("Attempting to set Text. FishName is: %s"), *Fish->FishName);
-        Text_FishName->SetText(FText::FromString(Fish->FishName));
+        UE_LOG(LogTemp, Log, TEXT("UI Set Name: %s"), *FishName.ToString());
+        Text_FishName->SetText(FishName);
     }
 
     if (Text_Size)
     {
         // float を FText に変換 (例: "12.5 cm")
-        FString SizeString = FString::Printf(TEXT("%.1f cm"), Fish->SizeCm);
+        FString SizeString = FString::Printf(TEXT("%.1f cm"), Size);
         Text_Size->SetText(FText::FromString(SizeString));
     }
 
     if (Text_Rarity)
     {
         // Rarity を FText に変換
-        FString RarityString = FString::Printf(TEXT("レア度: %d"), Fish->FishRarity);
+        FString RarityString = FString::Printf(TEXT("レア度: %d"), Rarity);
         Text_Rarity->SetText(FText::FromString(RarityString));
     }
 
-    if (Image_FishIcon && Fish->UITexture)
+    if (Image_FishIcon)
     {
-        Image_FishIcon->SetBrushFromTexture(Fish->UITexture);
+        if (FishImage)
+        {
+            Image_FishIcon->SetBrushFromTexture(FishImage);
+        }
+        else
+        {
+            UE_LOG(LogTemp, Error, TEXT("UCaughtFish: FishImage is NULL!"));
+        }
     }
 
 }

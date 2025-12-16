@@ -22,13 +22,12 @@ public:
 
     virtual void Tick(float DeletaTime) override;
 
-    //この魚の抵抗力の基底値
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Fish Stats")
-    float BaseResistance = 5.0f;
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Fish Stats")
+    float BaseResistance;
 
     //抵抗力の最大増加係数（元気なときほど抵抗が増える度合い）
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Fish Stats")
-    float MaxResistanceMultiplier = 40.0f;
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Fish Stats")
+    float MaxResistanceMultiplier;
 
     //プレイヤーゲージの減衰に寄与する係数 (魚の暴れやすさ)
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Fish Stats")
@@ -45,7 +44,7 @@ public:
     float SizeCm; // 大きさ
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FishData")
-    int32 FishRarity; // レア度 (1:コモン, 5:レジェンドなど)
+    int32 Rarity; // レア度 (1:コモン, 5:レジェンドなど)
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FishData")
     class UTexture2D* UITexture;
@@ -53,13 +52,11 @@ public:
     void ShowFish();
     void HideFish();
 
-    void SetFishData(const FString& Name, float Size, int32 Rarity, class USkeletalMesh* FishMesh, float PlayerGaugeDecay);
+    void SetFishData(const FString& Name, float Size, int32 InRarity, float PlayerGaugeDecay, float InBaseResistance,
+        float InMaxResistanceMultiplier, UTexture2D* InTexture);
 
 protected:
     virtual void BeginPlay() override;
-
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Fish")
-    class USkeletalMeshComponent* FishMeshComponent;
 
 private:
     FTimerHandle HideTimerHandle;

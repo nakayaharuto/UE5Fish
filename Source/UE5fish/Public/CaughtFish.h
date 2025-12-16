@@ -30,8 +30,8 @@ public:
 	UFUNCTION()
 	void OnCloseButtonClicked();
 
-	UFUNCTION(BlueprintCallable, Category = "Fish Data")
-	void SetFishData(AFishActor* Fish);
+	UFUNCTION(BlueprintCallable, Category = "UI")
+	void SetFishData(FText FishName, float Size, UTexture2D* FishImage, int32 Rarity);
 
 public:
 	UPROPERTY(meta = (BindWidget))

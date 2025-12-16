@@ -112,8 +112,8 @@ public:
 	UPROPERTY()
 	UCaughtFish* CurrentCaughtFishWidget;
 	// ’Ş‰ÊƒCƒxƒ“ƒg‚ğó‚¯æ‚éŠÖ”
-	UFUNCTION(BlueprintCallable, Category = "Fishing")
-	void HandleFishCaught(AFishActor* InCaughtFish);
+	UFUNCTION() 
+		void HandleFishCaught(FText FishName, float Size, UTexture2D* FishImage, int32 Rarity);
 
 	UFUNCTION(BlueprintCallable, Category = "Fishing UI")
 	void CloseCaughtFishUI();

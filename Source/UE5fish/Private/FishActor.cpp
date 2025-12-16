@@ -30,9 +30,22 @@ void AFishActor::ShowFish()
 
 float AFishActor::GetCurrentDynamicResistance(float CurrentFishGauge, float GaugeMax) const
 {
-    // 抵抗力 = 基本抵抗 + ゲージ割合 * 最大増加係数
-    float DynamicResistance = BaseResistance + (CurrentFishGauge / GaugeMax) * MaxResistanceMultiplier;
-    return DynamicResistance;
+    // 魚ゲージの進行度 (0.0 から 1.0)
+    float ProgressRatio = CurrentFishGauge / GaugeMax;
+
+    // 抵抗力は、魚ゲージが低いほど高くなる（元気なほど抵抗する）
+    // 進行度が高くなると、抵抗力は Max から Base に向かって減少する。
+    float ResistanceRatio = 1.0f - ProgressRatio; // 0% で 1.0, 100% で 0.0
+
+    // 抵抗力の変動幅
+    float ResistanceRange = MaxResistanceMultiplier - BaseResistance;
+
+    // 現在の動的抵抗力 = ベース抵抗力 + (変動幅 * 抵抗比率)
+    // FishGaugeが低いほど (ResistanceRatioが大きいほど) 抵抗力が MaxResistanceMultiplier に近づく
+    float DynamicResistance = BaseResistance + (ResistanceRange * ResistanceRatio);
+
+    // 抵抗力は常に正の値であることを保証
+    return FMath::Max(DynamicResistance, 0.1f);
 }
 
 void AFishActor::HideFish()
@@ -47,42 +60,12 @@ void AFishActor::Tick(float DeletaTime)
 
 }
 
-void AFishActor::SetFishData(const FString& Name, float Size, int32 Rarity, class USkeletalMesh* FishMesh, float PlayerGaugeDecay)
+void AFishActor::SetFishData(const FString& Name, float Size, int32 InRarity,  float PlayerGaugeDecay, float InBaseResistance,
+    float InMaxResistanceMultiplier, UTexture2D* InTexture)
 {
+
     FishName = Name;
     SizeCm = Size;
-    Rarity = Rarity;
-
-    UE_LOG(LogTemp, Log, TEXT("AFishActor Data Set: Name=%s, Size=%.1f cm, Rarity=%d"), *Name, Size, Rarity);
-
-    // Mesh は AFishActor.h で UStaticMeshComponent* Mesh; として定義されている前提
-    if (Mesh && FishMesh)
-    {
-        // 外部から渡された UStaticMesh をコンポーネントに設定
-        FishMeshComponent->SetSkeletalMesh(FishMesh);
-
-        // サイズに応じたスケール調整
-        // 例: 50cm を基準スケール 1.0 とした場合
-        const float BaseSizeCm = 50.0f;
-
-        // 実際のサイズと基準サイズの比率をスケールファクターとする
-        float ScaleFactor = Size / BaseSizeCm;
-
-        // 極端に大きくなりすぎないよう、スケールに制限を設けても良い
-        ScaleFactor = FMath::Clamp(ScaleFactor, 0.5f, 5.0f);
-
-        // 3Dモデルをスケーリング 
-        Mesh->SetRelativeScale3D(FVector(ScaleFactor));
-    }
-    else
-    {
-        if (!Mesh)
-        {
-            UE_LOG(LogTemp, Error, TEXT("AFishActor: Mesh component is NULL!"));
-        }
-        if (!FishMesh)
-        {
-            UE_LOG(LogTemp, Error, TEXT("AFishActor: FishMesh asset is NULL!"));
-        }
-    }
+    Rarity = InRarity;
+    this->UITexture = InTexture; // UI用の画像をここで受け取る
 }

@@ -227,7 +227,7 @@ void ALureActor::ReelStep(float DeltaTime)
         if (AFishingRodActor* Rod = Cast<AFishingRodActor>(GetOwner()))
         {
             // 竿内部でケーブルを切り離したり表示を隠したり ResetRodState をやる
-            //Rod->ResetRodState();
+            Rod->ResetRodState();
         }
 
         return;

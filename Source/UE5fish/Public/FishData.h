@@ -32,11 +32,6 @@ public:
 	//UIで表示するための画像（テクスチャ）
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI")
 	class UTexture2D* UITexture;
-
-	// 表示する魚のモデルアセット (SkeletalMeshまたはStaticMesh)
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Assets")
-	TSoftObjectPtr<class USkeletalMesh> FishMeshAsset;
-
 	// 最小サイズ (cm)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
 	float MinSize;

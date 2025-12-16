@@ -213,29 +213,31 @@ void AFishingRodActor::ReelProgress(float DeltaTime)
     // 魚の抵抗力を動的に計算 (PlayerGaugeの計算にのみ使用)
     float DynamicResistance = CalculateFishResistance();
 
-    // プレイヤーゲージの増減計算 (抵抗の影響はそのまま残す - 中央合わせ難易度の源)
-    float GaugeChange = (PlayerReelPower - DynamicResistance) * DeltaTime;
-    PlayerGauge += GaugeChange;
-    PlayerGauge = FMath::Clamp(PlayerGauge, 0.0f, GaugeMax);
-
-    // 🐠 魚ゲージの調整 (純粋な増加ロジック)
-
     // 1. 中央合わせボーナス計算 (PlayerGaugeの位置による効率ボーナス)
     float CenterDeviation = FMath::Abs(PlayerGauge - (GaugeMax / 2.0f));
     float MaxDeviation = GaugeMax / 2.0f;
     float CenterBonus = 1.0f - (CenterDeviation / MaxDeviation); // 中央で最大1.0、端で最小0.0
 
-    // 2. 魚ゲージの増加計算 (抵抗力に関係なく、長押し入力があったら増加させる)
-    float ReelSpeed = 5.0f; // 巻き取り速度 (調整用)
+    PlayerGauge += PlayerReelPower * DeltaTime;
+    PlayerGauge = FMath::Clamp(PlayerGauge, 0.0f, GaugeMax);
 
-    float CenterBoostMultiplier = 10.0f;    //中央合わせでのボーナスの強さ
+    // 🐠 魚ゲージの調整 (純粋な増加ロジック)
 
-    float FinalReelSpeed = ReelSpeed + (CenterBonus * CenterBoostMultiplier);
-    // プレイヤーが中央にいるほど効率よく巻ける
-    FishGauge += FinalReelSpeed * DeltaTime;
+    float ProgressiveBoost = (FishGauge / GaugeMax) * MaxProgressiveBoost;
+
+    float ReelIncrease = BaseReelSpeed + (CenterBonus * CenterBoostMultiplier) + ProgressiveBoost;
+
+    float FinalFishGaugeChange = ReelIncrease * DeltaTime;
+
+    // FishGaugeの更新
+    FishGauge += FinalFishGaugeChange;
+    FishGauge = FMath::Clamp(FishGauge, 0.0f, GaugeMax);
 
     // UIの更新 (実装が必要な関数)
     UpdateBattleGaugeUI(PlayerGauge, GaugeMax);
+
+    //終了判定
+    CheckFishBattleState();
 }
 
 void AFishingRodActor::Tick(float DeltaTime)
@@ -307,17 +309,24 @@ void AFishingRodActor::Tick(float DeltaTime)
         }
 
         // 2. 魚ゲージの純粋な減少ロジック
-        if (!bIsPlayerReeling)
+        if (!bIsPlayerReeling) // bIsPlayerReeling が false の場合のみ減衰
         {
-            float FishDecayRate = 2.0f; // 魚ゲージの自然減衰速度 (調整用)
-            FishGauge -= FishDecayRate * DeltaTime;
+            float CurrentDynamicResistance = CalculateFishResistance();
+            // 魚ゲージの減少は、魚の抵抗力に比例して強くする
+            float FishDecayRate = 2.0f; // 基本減衰速度
+            float DecayMultiplier = 0.5f; // 抵抗力の影響を調整する係数
+
+            // 魚の抵抗力を利用して減衰力を決定
+            float FinalDecayRate = FishDecayRate + (CurrentDynamicResistance * DecayMultiplier);
+
+            FishGauge -= FinalDecayRate * DeltaTime;
         }
 
         // 3. 全ゲージのクランプ
         PlayerGauge = FMath::Clamp(PlayerGauge, 0.f, GaugeMax);
         FishGauge = FMath::Clamp(FishGauge, 0.f, GaugeMax);
 
-        // 4. 終了判定
+        //終了判定
         CheckFishBattleState();
     }
 }
@@ -436,6 +445,7 @@ void AFishingRodActor::CheckFishBattleState()
     // 敗北判定 3:魚ゲージが 0 になった（魚に逃げられた）
     if (FishGauge <= 0.0f)
     {
+        UE_LOG(LogTemp, Warning, TEXT("FISH GAUGE ZERO! EndBattle(false) called (Fish escaped)."));
         EndFishBattle(false);
         return;
     }
@@ -444,7 +454,7 @@ void AFishingRodActor::CheckFishBattleState()
 void AFishingRodActor::UpdateBattleGaugeUI(float CurrentValue, float MaxValue)
 {
     // デバッグログで値を確認する (一時的な処理)
-    UE_LOG(LogTemp, Log, TEXT("UI Update: Gauge = %.2f / %.2f"), CurrentValue, MaxValue);
+    //UE_LOG(LogTemp, Log, TEXT("UI Update: Gauge = %.2f / %.2f"), CurrentValue, MaxValue);
 }
 
 void AFishingRodActor::EndFishBattle(bool bSuccess)
@@ -453,7 +463,7 @@ void AFishingRodActor::EndFishBattle(bool bSuccess)
 
     // UI通知
     OnEndFishBattle.Broadcast(bSuccess);
-
+    UE_LOG(LogTemp, Warning, TEXT("111動いているかい"));
     if (bSuccess)
     {
         // 成功の場合、リールアップを開始し、ルアーを竿先まで引き戻す
@@ -464,13 +474,24 @@ void AFishingRodActor::EndFishBattle(bool bSuccess)
             StartReel();
            
         }
+        UE_LOG(LogTemp, Warning, TEXT("畜生やられ千葉"));
         if(APlayerController * PC = UGameplayStatics::GetPlayerController(this, 0))
         {
             if (AMyCharacter* MyChar = Cast<AMyCharacter>(PC->GetPawn()))
             {
-                // 魚アクターのインスタンスを渡す
-                UE_LOG(LogTemp, Warning, TEXT("SUCCESS: Notifying Character to HandleFishCaught."));
-                MyChar->HandleFishCaught(CaughtFish);
+                if (CaughtFish)
+                {
+                    FText FishNameText = FText::FromString(CaughtFish->FishName);
+
+                    UE_LOG(LogTemp, Warning, TEXT("動いているかい"));
+                    // 引数の順番：名前, サイズ, 画像, レアリティ
+                    MyChar->HandleFishCaught(
+                        FishNameText,
+                        CaughtFish->SizeCm,
+                        CaughtFish->UITexture,
+                        CaughtFish->Rarity
+                    );
+                }
             }
         }
     }
@@ -520,7 +541,7 @@ void AFishingRodActor::SpawnFish()
     // 1. データテーブルから全行を取得
     TArray<FFishingFishData*> AllRows;
     // FFishData が定義されているヘッダーをインクルードしている必要があります
-    FishDataTable->GetAllRows<FFishingFishData>(TEXT(""), AllRows);
+    FishDataTable->GetAllRows<FFishingFishData>(TEXT("FishingRod_SpawnFish"), AllRows);
 
     if (AllRows.Num() == 0)
     {
@@ -550,7 +571,7 @@ void AFishingRodActor::SpawnFish()
         if (CaughtFish)
         {
             // メッシュアセットの同期ロード
-            class USkeletalMesh* FishMesh = SelectedFishData->FishMeshAsset.LoadSynchronous();
+            //class USkeletalMesh* FishMesh = SelectedFishData->FishMeshAsset.LoadSynchronous();
 
             // A. SetFishData を呼び出し、魚の基本情報を設定
             // SetFishData の引数定義は、この5つに合うように AFishActor.h で宣言が必要です。
@@ -558,14 +579,11 @@ void AFishingRodActor::SpawnFish()
                 SelectedFishData->FishName,
                 ActualSize,
                 SelectedFishData->Rarity,
-                FishMesh, // USkeletalMesh*
-                SelectedFishData->PlayerGaugeDecayContribution
+                SelectedFishData->PlayerGaugeDecayContribution,
+                SelectedFishData->BaseResistance,
+                SelectedFishData->MaxResistanceMultiplier,
+                SelectedFishData->UITexture
             );
-
-            // B. 抵抗値関連のプロパティは、SetFishData内で設定するか、
-            //    FFishDataにプロパティを追加して直接設定します。
-            //    (この FFishData 構造体には BaseResistance, MaxResistanceMultiplier は含まれていないため、
-            //     これらの値は AFishActor のデフォルト値に依存することになります。)
 
             // 例外: FFishData にある Decay 係数を、AFishActor の UPROPERTY に直接設定
             // AFishActor::PlayerGaugeDecayContribution が UPROPERTY であることが前提
