@@ -8,7 +8,7 @@ public class UE5fish : ModuleRules
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 	
-		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "Niagara", "CableComponent", "UMG", "Slate", "SlateCore" });
+		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "Niagara", "CableComponent", "UMG", "Slate", "SlateCore", "SunPosition" });
 
 
         PrivateDependencyModuleNames.AddRange(new string[] {  });

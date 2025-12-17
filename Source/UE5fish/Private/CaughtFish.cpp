@@ -44,7 +44,7 @@ void UCaughtFish::SetFishData(FText FishName, float Size, UTexture2D* FishImage,
     if (Text_Rarity)
     {
         // Rarity ‚ð FText ‚É•ÏŠ·
-        FString RarityString = FString::Printf(TEXT("ƒŒƒA“x: %d"), Rarity);
+        FString RarityString = FString::Printf(TEXT("Rarity: %d"), Rarity);
         Text_Rarity->SetText(FText::FromString(RarityString));
     }
 
