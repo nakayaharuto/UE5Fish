@@ -372,6 +372,17 @@ void AFishingRodActor::OnFishHitEvent()
 {
     UE_LOG(LogTemp, Warning, TEXT("Rod: HIT 受信"));
 
+    //プレイヤーのアニメーション
+    if (AMyCharacter* MyChar = Cast<AMyCharacter>(GetOwner()))
+    {
+        MyChar->PlayFishHitAnimation();
+    }
+
+    if (RodHitMontage && RodMesh->GetAnimInstance())
+    {
+        RodMesh->GetAnimInstance()->Montage_Play(RodHitMontage);
+    }
+
     if (!IsValid(CaughtFish))
     {
         // 魚データテーブルを参照し、ランダムな魚をスポーンさせる

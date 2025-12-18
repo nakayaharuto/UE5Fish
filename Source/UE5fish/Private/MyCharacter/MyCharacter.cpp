@@ -43,6 +43,7 @@ AMyCharacter::AMyCharacter()
 	// 移動はプレイヤーの向きを変える
 	bUseControllerRotationYaw = false;
 	GetCharacterMovement()->bOrientRotationToMovement = true;
+	GetCharacterMovement()->bUseControllerDesiredRotation = false;
 }
 
 void AMyCharacter::BeginPlay()
@@ -332,5 +333,15 @@ void AMyCharacter::CloseCaughtFishUI()
 		// 入力モードをゲームプレイのみに戻す
 		PC->SetInputMode(FInputModeGameOnly());
 		PC->bShowMouseCursor = false;
+	}
+}
+
+void AMyCharacter::PlayFishHitAnimation()
+{
+	if (FishHitMontage)
+	{
+		// アニメーションモンタージュを再生
+		PlayAnimMontage(FishHitMontage);
+		UE_LOG(LogTemp, Warning, TEXT("Character: Playing Fish Hit Montage!"));
 	}
 }

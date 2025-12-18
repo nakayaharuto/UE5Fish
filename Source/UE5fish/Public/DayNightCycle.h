@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "SunPosition/Public/SunPosition.h"
 #include "DayNightCycle.generated.h"
 
 class ADirectionalLight;

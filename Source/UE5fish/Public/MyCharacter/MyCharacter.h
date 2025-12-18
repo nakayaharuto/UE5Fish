@@ -118,6 +118,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Fishing UI")
 	void CloseCaughtFishUI();
 
+	// ‹›‚ªƒqƒbƒg‚µ‚½‚ÉŒÄ‚Î‚ê‚éŠÖ”
+	void PlayFishHitAnimation();
+
 public:
 	// Sets default values for this character's properties
 	AMyCharacter();
@@ -134,6 +137,8 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Fishing, meta = (AllowPrivateAccess = "true"))
 	ALureActor* LureActor;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animations")
+	UAnimMontage* FishHitMontage;
 	
 
 

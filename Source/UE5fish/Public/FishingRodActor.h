@@ -175,7 +175,8 @@ protected:
     UPROPERTY(EditAnywhere, Category = "Casting")
     float CastChargeRate = 1.0f;           // チャージ速度（増加率）
 
-   
+    UPROPERTY(EditAnywhere, Category = "Animations")
+    UAnimMontage* RodHitMontage;
 
 private:
     FTimerHandle FishBiteTimerHandle;
