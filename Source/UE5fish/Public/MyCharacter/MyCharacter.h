@@ -46,6 +46,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* LookAction;
 
+	//インベントリ
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	UInputAction* InventoryAction;
+
 	//アクション
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* FishingAction;
@@ -98,9 +102,6 @@ public:
 	UFUNCTION()
 	void HideFishingUI(bool bSuccess);
 
-	UFUNCTION()
-	void ShowCaughtFishWidget(AFishActor* CaughtFishActor);
-
 	// UIウィジェットのクラスリファレンス
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
 	TSubclassOf<class UCaughtFish> CaughtFishClass;
@@ -120,6 +121,8 @@ public:
 
 	// 魚がヒットした時に呼ばれる関数
 	void PlayFishHitAnimation();
+
+	
 
 public:
 	// Sets default values for this character's properties
@@ -148,6 +151,7 @@ protected:
 	/// <param name="Value"></param>
 	void Move(const FInputActionValue& Value);//移動
 	void Look(const FInputActionValue& Value);//視点
+	void Inventory(const FInputActionValue& Value);//視点
 	void ToggleEquipRod(const FInputActionValue& Value);
 	void StartCastingInput(const FInputActionValue& Value);
 	void StartReelInput(const FInputActionValue& Value);

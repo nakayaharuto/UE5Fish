@@ -5,7 +5,23 @@
 #include "Engine/DataTable.h"
 #include "FishData.generated.h"
 
+
 // ’Ş‚ê‚é‹›‚ÌÃ“I‚Èî•ñ‚ğŠi”[‚·‚é\‘¢‘Ì
+USTRUCT(BlueprintType)
+struct FFishAlbumData
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadOnly)
+	int32 TimesCaught = 0;
+
+	UPROPERTY(BlueprintReadOnly)
+	float MaxSize = 0.0f;
+
+	UPROPERTY(BlueprintReadOnly)
+	class UTexture2D* FishIcon = nullptr;
+};
+
 USTRUCT(BlueprintType)
 struct FFishingFishData : public FTableRowBase
 {

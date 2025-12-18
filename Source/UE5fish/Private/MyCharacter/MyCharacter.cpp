@@ -8,6 +8,8 @@
 #include "CaughtFish.h"
 #include "FishingRodActor.h"
 #include "FishingBattleWidget.h"
+#include "GameInstance/FishingHUD.h" // Cast<AMyFishingHUD>用
+#include "GameInstance/MyGameInstance.h" // Cast<UMyGameInstance>用
 #include "LureActor.h"
 #include "FishActor.h"
 #include "Kismet/GameplayStatics.h"
@@ -107,6 +109,9 @@ void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 		if (LookAction) EnhancedInput->BindAction(LookAction, ETriggerEvent::Triggered, this, &AMyCharacter::Look);
 		if (FishingAction) EnhancedInput->BindAction(FishingAction, ETriggerEvent::Triggered, this, &AMyCharacter::ToggleEquipRod);
 		
+		//インベントリ
+		if (InventoryAction) EnhancedInput->BindAction(InventoryAction, ETriggerEvent::Triggered, this, &AMyCharacter::Inventory);
+
 		//Eキーでキャスト
 		if (StartCasting) EnhancedInput->BindAction(StartCasting, ETriggerEvent::Started, this, &AMyCharacter::StartCastingInput);
 		//if (ReleaseCasting) EnhancedInput->BindAction(ReleaseCasting, ETriggerEvent::Started, this, &AMyCharacter::ReleaseCastingInput);
@@ -144,6 +149,21 @@ void AMyCharacter::Look(const FInputActionValue& Value)
 	AddControllerYawInput(LookAxisVector.X);
 	AddControllerPitchInput(LookAxisVector.Y);
 }
+//////////////////////////////////////////////////////////////////////////
+// インベントリ関連
+
+void AMyCharacter::Inventory(const FInputActionValue& Value)
+{
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if (!PC) return;
+
+	// 自分のHUDを取得してトグル関数を呼ぶだけ
+	if (AFishingHUD* FishingHUD = Cast<AFishingHUD>(GetWorld()->GetFirstPlayerController()->GetHUD()))
+	{
+		FishingHUD->ToggleFishAlbum();
+	}
+}
+
 
 //////////////////////////////////////////////////////////////////////////
 // 釣り関連
@@ -253,29 +273,7 @@ void AMyCharacter::StopReelInput(const FInputActionValue& Value)
 	
 }
 
-void AMyCharacter::ShowCaughtFishWidget(AFishActor* CaughtFishActor)
-{
-	// ここで、CaughtFishActor の情報（名前、サイズ、画像など）を使って、
-	// 魚ゲット専用のウィジェット (UUserWidget) を作成し、ビューポートに追加します。
 
-	// 例:
-	// if (CaughtFishWidgetClass)
-	// {
-	//     UCaughtFishWidget* CaughtWidget = CreateWidget<UCaughtFishWidget>(GetWorld(), CaughtFishWidgetClass);
-	//     if (CaughtWidget)
-	//     {
-	//         CaughtWidget->SetFishData(CaughtFishActor); // 魚のデータを渡す
-	//         CaughtWidget->AddToViewport();
-	//     }
-	// }
-
-	// 成功した魚アクターは、ここで破棄しても良い
-	//if (IsValid(CaughtFishActor))
-	//{
-	//	// 竿側で既に破棄されているはずですが、念のため
-	//	// CaughtFishActor->Destroy();
-	//}
-}
 
 void AMyCharacter::HandleFishCaught(FText FishName, float Size, UTexture2D* FishImage, int32 Rarity)
 {
@@ -287,6 +285,13 @@ void AMyCharacter::HandleFishCaught(FText FishName, float Size, UTexture2D* Fish
 	if (!PC)
 	{
 		UE_LOG(LogTemp, Error, TEXT("UI Error: PlayerController (PC) is NULL."));
+	}
+
+	// 1. GameInstance を取得してキャスト
+	if (UMyGameInstance* GI = Cast<UMyGameInstance>(GetGameInstance()))
+	{
+		// 2. システム側の図鑑に登録！
+		GI->RegisterFishToAlbum(FishName.ToString(), Size, FishImage);
 	}
 
 	// 既にウィジェットが表示中の場合は、一度破棄してから再作成
