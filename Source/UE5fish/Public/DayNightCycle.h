@@ -2,10 +2,15 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "SunPosition/Public/SunPosition.h"
+#include "Components/DirectionalLightComponent.h"
+#include "SunPosition.h"
+#include "Engine/SkyLight.h"
+#include "Components/SkyLightComponent.h"
 #include "DayNightCycle.generated.h"
 
 class ADirectionalLight;
+
+
 
 UCLASS()
 class UE5FISH_API ADayNightCycle : public AActor
@@ -34,10 +39,21 @@ public:
     float TimeSpeed = 60.0f; // 1秒 = 1分（ゲーム内）
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "DayNight")
-    ADirectionalLight* SunLight;
+    float SunIntensity = 10.0f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "DayNight")
-    ADirectionalLight* MoonLight;
+    float MoonIntensity = 0.5f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "DayNight")
+    FColor MoonColor = FColor(200, 230, 255); // 少し青白い
+
+    // MoonLight は削除し、1つの SunLight を使い回す
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "DayNight")
+    ADirectionalLight* MainLight;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "DayNight")
+    ASkyLight* MySkyLight;
+
 
 private:
     float CurrentTime = 12.0f; // 12:00 スタート

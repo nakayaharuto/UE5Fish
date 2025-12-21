@@ -110,7 +110,7 @@ void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 		if (FishingAction) EnhancedInput->BindAction(FishingAction, ETriggerEvent::Triggered, this, &AMyCharacter::ToggleEquipRod);
 		
 		//インベントリ
-		if (InventoryAction) EnhancedInput->BindAction(InventoryAction, ETriggerEvent::Triggered, this, &AMyCharacter::Inventory);
+		if (InventoryAction) EnhancedInput->BindAction(InventoryAction, ETriggerEvent::Started, this, &AMyCharacter::Inventory);
 
 		//Eキーでキャスト
 		if (StartCasting) EnhancedInput->BindAction(StartCasting, ETriggerEvent::Started, this, &AMyCharacter::StartCastingInput);
@@ -160,6 +160,7 @@ void AMyCharacter::Inventory(const FInputActionValue& Value)
 	// 自分のHUDを取得してトグル関数を呼ぶだけ
 	if (AFishingHUD* FishingHUD = Cast<AFishingHUD>(GetWorld()->GetFirstPlayerController()->GetHUD()))
 	{
+		UE_LOG(LogTemp, Warning, TEXT("iaiaiaiaiaia"));
 		FishingHUD->ToggleFishAlbum();
 	}
 }

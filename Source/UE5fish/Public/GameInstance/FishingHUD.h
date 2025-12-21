@@ -20,7 +20,7 @@ public:
     void ToggleFishAlbum();
 
     //}ŠÓ‚ğŠJ‚¢‚½‚Ìˆ—
-    void RefreshAlbum();
+    void RefreshAlbum(UUserWidget* AlbumUI);
 
 protected:
     UPROPERTY(EditAnywhere, Category = "UI")

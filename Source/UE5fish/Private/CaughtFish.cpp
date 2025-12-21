@@ -60,6 +60,29 @@ void UCaughtFish::SetFishData(FText FishName, float Size, UTexture2D* FishImage,
         }
     }
 
+    if (!IsInViewport())
+    {
+        AddToViewport();
+    }
+
+    // 3. 【ここが本題】入力モードの切り替え
+    APlayerController* PC = GetOwningPlayer();
+    if (PC)
+    {
+        // マウスカーソルを表示
+        PC->bShowMouseCursor = true;
+
+        // UI操作のみを受け付けるモードに設定
+        FInputModeUIOnly InputMode;
+
+        // 自分自身(this)を操作対象（フォーカス）として指定
+        // これで「Non-Focusable」エラーを防げます
+        InputMode.SetWidgetToFocus(TakeWidget());
+        InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+
+        PC->SetInputMode(InputMode);
+    }
+
 }
 
 void UCaughtFish::OnCloseButtonClicked()
