@@ -36,18 +36,8 @@ void UCaughtFish::SetFishData(FText FishName, float Size, UTexture2D* FishImage,
 
     if (Text_Size)
     {
-        FString SizeString;
-
-        if (Size >= 1.0f) // 1メートル以上の場合
-        {
-            SizeString = FString::Printf(TEXT("%.2f m"), Size);
-        }
-        else // 1メートル未満の場合（センチメートル表記）
-        {
-            // 1m = 100cm として計算
-            SizeString = FString::Printf(TEXT("%.1f cm"), Size * 100.0f);
-        }
-
+        // float を FText に変換 (例: "12.5 cm")
+        FString SizeString = FString::Printf(TEXT("%.1f cm"), Size);
         Text_Size->SetText(FText::FromString(SizeString));
     }
 

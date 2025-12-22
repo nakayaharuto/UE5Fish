@@ -60,9 +60,6 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Fish")
 	int32 Rarity;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Fishing")
-	int32 SpawnWeight;
-
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Fish")
 	float PlayerGaugeDecayContribution;
 };
