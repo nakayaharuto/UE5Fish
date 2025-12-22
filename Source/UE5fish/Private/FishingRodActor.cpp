@@ -335,12 +335,17 @@ void AFishingRodActor::Tick(float DeltaTime)
 float AFishingRodActor::CalculateFishResistance()
 {
     // 釣れた魚の参照が存在することを確認 (CaughtFishをAMyFishActor型で保持していると仮定)
-    if (CaughtFish)
+   if (CaughtFish)
     {
-        // 魚オブジェクトに計算を委譲
-        return CaughtFish->GetCurrentDynamicResistance(FishGauge, GaugeMax);
+        // 基本の抵抗力
+        float BaseRes = CaughtFish->GetCurrentDynamicResistance(FishGauge, GaugeMax);
+        
+        // レア度(1~5)に応じて抵抗力を指数関数的に上げる
+        // 例: レア1なら1倍、レア5（クジラ）なら 1.5の4乗 ≒ 5倍の抵抗
+        float RarityMultiplier = FMath::Pow(1.5f, (float)(CaughtFish->Rarity - 1));
+
+        return BaseRes * RarityMultiplier;
     }
-    // 魚がいない場合のデフォルト値
     return 1.0f;
 }
 
@@ -471,10 +476,12 @@ void AFishingRodActor::UpdateBattleGaugeUI(float CurrentValue, float MaxValue)
 void AFishingRodActor::EndFishBattle(bool bSuccess)
 {
     bIsPlayerReeling = false;
+    bIsFishBattle = false;
 
     // UI通知
     OnEndFishBattle.Broadcast(bSuccess);
     UE_LOG(LogTemp, Warning, TEXT("111動いているかい"));
+
     if (bSuccess)
     {
         // 成功の場合、リールアップを開始し、ルアーを竿先まで引き戻す
@@ -485,26 +492,44 @@ void AFishingRodActor::EndFishBattle(bool bSuccess)
             StartReel();
            
         }
-        UE_LOG(LogTemp, Warning, TEXT("畜生やられ千葉"));
-        if(APlayerController * PC = UGameplayStatics::GetPlayerController(this, 0))
-        {
-            if (AMyCharacter* MyChar = Cast<AMyCharacter>(PC->GetPawn()))
-            {
-                if (CaughtFish)
-                {
-                    FText FishNameText = FText::FromString(CaughtFish->FishName);
 
-                    UE_LOG(LogTemp, Warning, TEXT("動いているかい"));
-                    // 引数の順番：名前, サイズ, 画像, レアリティ
-                    MyChar->HandleFishCaught(
-                        FishNameText,
-                        CaughtFish->SizeCm,
-                        CaughtFish->UITexture,
-                        CaughtFish->Rarity
-                    );
-                }
-            }
+        UE_LOG(LogTemp, Warning, TEXT("畜生やられ千葉"));
+
+        // PlayerControllerの取得 (GetWorld()から直接取るほうが安定します)
+        APlayerController* PC = GetWorld()->GetFirstPlayerController();
+        if (!PC)
+        {
+            UE_LOG(LogTemp, Error, TEXT("FAIL: PlayerController is NULL"));
+            return;
         }
+
+        // Characterへのキャスト
+        AMyCharacter* MyChar = Cast<AMyCharacter>(PC->GetPawn());
+        if (!MyChar)
+        {
+            // キャラクターのクラス名が正しいか、PCがそのPawnを操作しているか
+            UE_LOG(LogTemp, Error, TEXT("FAIL: MyCharacter Cast failed! Current Pawn: %s"),
+                PC->GetPawn() ? *PC->GetPawn()->GetName() : TEXT("None"));
+            return;
+        }
+
+        // 魚オブジェクトの確認
+        if (!CaughtFish || !IsValid(CaughtFish))
+        {
+            UE_LOG(LogTemp, Error, TEXT("FAIL: CaughtFish is NULL or Invalid!"));
+            return;
+        }
+
+        // ここまで来れば確実に呼ばれるはず
+        FText FishNameText = FText::FromString(CaughtFish->FishName);
+        UE_LOG(LogTemp, Warning, TEXT("SUCCESS: Calling HandleFishCaught for %s"), *CaughtFish->FishName);
+
+        MyChar->HandleFishCaught(
+            FishNameText,
+            CaughtFish->SizeCm,
+            CaughtFish->UITexture,
+            CaughtFish->Rarity
+        );
     }
     else
     {
@@ -512,7 +537,6 @@ void AFishingRodActor::EndFishBattle(bool bSuccess)
         if (CurrentLure)
         {
             bIsReeling = true;
-            //UE_LOG(LogTemp, Warning, TEXT("来てます！来てますよぉ！"));
             StartReel();
         }
         else
@@ -521,8 +545,6 @@ void AFishingRodActor::EndFishBattle(bool bSuccess)
             ResetLure();
         }
     }
-    bIsFishBattle = false;
-
     // ゲージリセット（任意）
     PlayerGauge = 0.f;
     FishGauge = 0.f;
@@ -560,8 +582,29 @@ void AFishingRodActor::SpawnFish()
         return;
     }
 
-    // 2. 確率や重み付けに基づき、ランダムな魚を選択
-    const FFishingFishData* SelectedFishData = AllRows[FMath::RandRange(0, AllRows.Num() - 1)];
+    // ---重み付け抽選ロジック開始 ---
+    int32 TotalWeight = 0;
+    for (const FFishingFishData* Row : AllRows)
+    {
+        TotalWeight += Row->SpawnWeight;
+    }
+
+    //0 ～ 合計値 の間で乱数を生成
+    int32 RandomValue = FMath::RandRange(0, TotalWeight - 1);
+
+    //どの魚が当選したか判定
+    const FFishingFishData* SelectedFishData = nullptr;
+    int32 CurrentWeightSum = 0;
+
+    for (const FFishingFishData* Row : AllRows)
+    {
+        CurrentWeightSum += Row->SpawnWeight;
+        if (RandomValue < CurrentWeightSum)
+        {
+            SelectedFishData = Row;
+            break; // 当選したのでループを抜ける
+        }
+    }
 
     if (SelectedFishData)
     {
