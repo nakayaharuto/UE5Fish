@@ -52,6 +52,16 @@ void AMyCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
+	if (APlayerController* PC = Cast<APlayerController>(GetController()))
+	{
+		// 1. 入力モードをゲームのみに戻す
+		FInputModeGameOnly InputMode;
+		PC->SetInputMode(InputMode);
+
+		// 2. マウスカーソルを消す
+		PC->bShowMouseCursor = false;
+	}
+
 	if (APlayerController* PC = Cast<APlayerController>(Controller))
 	{
 		if (UEnhancedInputLocalPlayerSubsystem* Subsystem =
