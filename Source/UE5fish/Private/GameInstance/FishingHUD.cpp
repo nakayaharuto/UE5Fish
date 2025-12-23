@@ -59,22 +59,30 @@ void AFishingHUD::RefreshAlbum(UUserWidget* AlbumUI)
     UMyGameInstance* GI = Cast<UMyGameInstance>(GetGameInstance());
     if (!GI || !SlotWidgetClass || !AlbumUI) return;
 
-    // 2. BP側のScrollBoxを探す（名前で検索）
-    UScrollBox* FishList = Cast<UScrollBox>(AlbumUI->GetWidgetFromName(TEXT("ScrollBox_FishList")));
-    if (!FishList) return;
+    // 現在のデータ数を確認
+    //UE_LOG(LogTemp, Warning, TEXT("HUD: RefreshAlbum開始。現在の図鑑データ数: %d"), GI->GlobalFishAlbum.Num());
 
-    FishList->ClearChildren(); // 一旦中身を空にする
+    UScrollBox* FishList = Cast<UScrollBox>(AlbumUI->GetWidgetFromName(TEXT("ScrollBox_FishList")));
+    if (!FishList)
+    {
+        //UE_LOG(LogTemp, Error, TEXT("HUD: ScrollBox_FishList NOT FOUND in Widget!"));
+        return;
+    }
+
+    FishList->ClearChildren();
+
+    //UE_LOG(LogTemp, Warning, TEXT("HUD: Refreshing Album. Data Count: %d"), GI->GlobalFishAlbum.Num());
 
     // 3. データの数だけスロットを作成して流し込む
     for (auto& Elem : GI->GlobalFishAlbum)
     {
+        // ★重要：ここがログに出るか確認
+        //UE_LOG(LogTemp, Warning, TEXT("HUD: Creating Slot for %s"), *Elem.Key);
+
         UFishAlbumSlot* NewSlot = CreateWidget<UFishAlbumSlot>(GetWorld(), SlotWidgetClass);
         if (NewSlot)
         {
-            // C++の関数を呼んでデータを流し込む！
             NewSlot->OnSetFishData(Elem.Key, Elem.Value.TimesCaught, Elem.Value.MaxSize, Elem.Value.FishIcon);
-
-            // ScrollBoxに追加
             FishList->AddChild(NewSlot);
         }
     }

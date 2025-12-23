@@ -20,4 +20,6 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Collection")
     void RegisterFishToAlbum(FString Name, float Size, UTexture2D* Icon);
 
+    UFUNCTION(BlueprintCallable, Category = "Collection")
+    void InitializeAlbumFromTable(UDataTable* FishTable);
 };

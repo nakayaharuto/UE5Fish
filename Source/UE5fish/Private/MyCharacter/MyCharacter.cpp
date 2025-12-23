@@ -51,19 +51,14 @@ AMyCharacter::AMyCharacter()
 void AMyCharacter::BeginPlay()
 {
 	Super::BeginPlay();
+	UE_LOG(LogTemp, Error, TEXT("DEBUG: MyCharacter::BeginPlay START"));
 
 	if (APlayerController* PC = Cast<APlayerController>(GetController()))
 	{
-		// 1. 入力モードをゲームのみに戻す
 		FInputModeGameOnly InputMode;
 		PC->SetInputMode(InputMode);
-
-		// 2. マウスカーソルを消す
 		PC->bShowMouseCursor = false;
-	}
 
-	if (APlayerController* PC = Cast<APlayerController>(Controller))
-	{
 		if (UEnhancedInputLocalPlayerSubsystem* Subsystem =
 			ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PC->GetLocalPlayer()))
 		{
@@ -84,24 +79,33 @@ void AMyCharacter::BeginPlay()
 		FishingRod = GetWorld()->SpawnActor<AFishingRodActor>(FishingRodClass, SpawnParams);
 		if (FishingRod)
 		{
-			// ソケット名 "RodSocket" にアタッチ（メッシュに設定済み）
 			FishingRod->AttachToComponent(GetMesh(),
 				FAttachmentTransformRules::SnapToTargetNotIncludingScale,
 				FName("RodSocket"));
 			FishingRod->SetActorHiddenInGame(true);
+
+			// バインド処理
+			FishingRod->OnStartFishBattle.AddDynamic(this, &AMyCharacter::ShowFishingUI);
+			FishingRod->OnEndFishBattle.AddDynamic(this, &AMyCharacter::HideFishingUI);
 		}
 	}
 
-	if (FishingRod)
+	if (FishingRod && FishingRod->FishDataTable)
 	{
-		//イベント
-		FishingRod->OnStartFishBattle.AddDynamic(this, &AMyCharacter::ShowFishingUI);
-		FishingRod->OnEndFishBattle.AddDynamic(this, &AMyCharacter::HideFishingUI);
-
-		//魚ゲット UI イベントのバインド
-		//FishingRod->OnFishCaughtUI.AddDynamic(this, &AMyCharacter::ShowCaughtFishWidget);
-		
-		FishingRod->OnFishCaughtUI.AddDynamic(this, &AMyCharacter::HandleFishCaught);
+		UMyGameInstance* GI = Cast<UMyGameInstance>(GetGameInstance());
+		if (GI)
+		{
+			GI->InitializeAlbumFromTable(FishingRod->FishDataTable);
+			UE_LOG(LogTemp, Warning, TEXT("Character: 竿が準備できたので図鑑を初期化しました！"));
+		}
+		else
+		{
+			UE_LOG(LogTemp, Error, TEXT("DEBUG: 依然として GI が NULL です。Project Settingsを確認してください。"));
+		}
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("DEBUG: FishingRod か DataTable が NULL のため初期化をスキップしました。"));
 	}
 }
 
@@ -191,10 +195,36 @@ void AMyCharacter::ShowFishingUI()
 
 void AMyCharacter::HideFishingUI(bool bSuccess)
 {
+	if (bHasProcessedCatch) return;
+
+	UE_LOG(LogTemp, Warning, TEXT("Character: HideFishingUI called. Success: %d"), bSuccess ? 1 : 0);
+
 	if (FishingBattleWidget)
 	{
 		FishingBattleWidget->RemoveFromParent();
 		FishingBattleWidget = nullptr;
+	}
+
+	if (bSuccess)
+	{
+		// ここで即座にフラグを立てる（2回目をガード）
+		bHasProcessedCatch = true;
+
+		if (FishingRod && FishingRod->CaughtFish)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Character: 1回目のみ図鑑登録を実行します。"));
+			HandleFishCaught(
+				FText::FromString(FishingRod->CaughtFish->FishName),
+				FishingRod->CaughtFish->SizeCm,
+				FishingRod->CaughtFish->UITexture,
+				FishingRod->CaughtFish->Rarity
+			);
+		}
+	}
+	else
+	{
+		// 失敗（ラインブレイク等）の時も、この回のバトルは終了なのでフラグを立てておく
+		bHasProcessedCatch = true;
 	}
 }
 
@@ -235,10 +265,29 @@ void AMyCharacter::ToggleFishingRod(bool bEquip)
 
 		if (bIsFishing)
 		{
+			
 			// 🎣 釣り開始 → 初期化
 			FishingRod->RodMesh->SetVisibility(true, true);
 			FishingRod->ResetRodState();
-
+			// --- 図鑑の初期化を追加 ---
+			UMyGameInstance* GI = Cast<UMyGameInstance>(GetGameInstance());
+			if (GI)
+			{
+				if (FishingRod->FishDataTable)
+				{
+					GI->InitializeAlbumFromTable(FishingRod->FishDataTable);
+					UE_LOG(LogTemp, Warning, TEXT("Character: 竿を構えたので図鑑を初期化しました。データ件数: %d"), GI->GlobalFishAlbum.Num());
+				}
+				else
+				{
+					UE_LOG(LogTemp, Error, TEXT("Character: 竿にデータテーブルがセットされていません！"));
+				}
+			}
+			else
+			{
+				// ここでエラーが出る場合は、プロジェクト設定のGameInstanceを確認
+				UE_LOG(LogTemp, Error, TEXT("Character: MyGameInstanceへのキャストに失敗しました。"));
+			}
 		}
 		else
 		{
@@ -257,7 +306,7 @@ void AMyCharacter::StartCastingInput(const FInputActionValue& Value)
 {
 	if (!bIsFishing) return;
 
-	//UE_LOG(LogTemp, Warning, TEXT("Character: StartCastingInput called. IsFishing: %d, Rod Valid: %d"), bIsFishing, (FishingRod != nullptr));
+	bHasProcessedCatch = false;
 
 	FVector CamLoc = FishingCamera->GetComponentLocation();
 	FVector CamDir = FishingCamera->GetForwardVector();
@@ -281,10 +330,8 @@ void AMyCharacter::StartReelInput(const FInputActionValue& Value)
 void AMyCharacter::StopReelInput(const FInputActionValue& Value)
 {
 	bIsReelPressed = false;
-	
+
 }
-
-
 
 void AMyCharacter::HandleFishCaught(FText FishName, float Size, UTexture2D* FishImage, int32 Rarity)
 {
@@ -301,9 +348,10 @@ void AMyCharacter::HandleFishCaught(FText FishName, float Size, UTexture2D* Fish
 	// --- 1. 図鑑登録（ここで一括管理） ---
 	if (UMyGameInstance* GI = Cast<UMyGameInstance>(GetGameInstance()))
 	{
-		// .ToString() を使って FString に変換して渡す
+		// もし HideFishingUI 以外からここが呼ばれてもいいように、
+		// RegisterFishToAlbum 自体を「1回のリザルトで1回」に制限したい場合はここでもフラグを見ます
 		GI->RegisterFishToAlbum(FishName.ToString(), Size, FishImage);
-		UE_LOG(LogTemp, Warning, TEXT("!!! Data Registered: %s !!!"), *FishName.ToString());
+		UE_LOG(LogTemp, Warning, TEXT("!!! HandleFishCaught: Data Registered: %s !!!"), *FishName.ToString());
 	}
 
 	// --- 2. ウィジェットの管理（既存の処理） ---
@@ -312,17 +360,15 @@ void AMyCharacter::HandleFishCaught(FText FishName, float Size, UTexture2D* Fish
 		CurrentCaughtFishWidget->RemoveFromParent();
 	}
 
-	CurrentCaughtFishWidget = CreateWidget<UCaughtFish>(PC, CaughtFishWidgetClass);
-
-	if (CurrentCaughtFishWidget)
+	if (CaughtFishWidgetClass)
 	{
-		// 魚のアクター自体をセットする処理（もしあれば）
-		// CurrentCaughtFishWidget->CurrentFishActor = ... ; 
-
-		// データをウィジェットに設定
-		CurrentCaughtFishWidget->SetFishData(FishName, Size, FishImage, Rarity);
-
-		// AddToViewportなどはSetFishData内で実装済みなら省略可能です
+		CurrentCaughtFishWidget = CreateWidget<UCaughtFish>(PC, CaughtFishWidgetClass);
+		if (CurrentCaughtFishWidget)
+		{
+			CurrentCaughtFishWidget->SetFishData(FishName, Size, FishImage, Rarity);
+			// ※ SetFishData の中で AddToViewport していない場合は、ここで呼ぶ必要があります
+			CurrentCaughtFishWidget->AddToViewport();
+		}
 	}
 }
 

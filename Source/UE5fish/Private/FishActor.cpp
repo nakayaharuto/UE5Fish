@@ -67,5 +67,8 @@ void AFishActor::SetFishData(const FString& Name, float Size, int32 InRarity,  f
     FishName = Name;
     SizeCm = Size;
     Rarity = InRarity;
+    this->PlayerGaugeDecayContribution = PlayerGaugeDecay; // これを追加！
+    this->BaseResistance = InBaseResistance;               // これを追加！
+    this->MaxResistanceMultiplier = InMaxResistanceMultiplier; // これを追加！
     this->UITexture = InTexture; // UI用の画像をここで受け取る
 }

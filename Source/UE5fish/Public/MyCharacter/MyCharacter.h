@@ -173,11 +173,12 @@ public:
 	bool bIsReelingFish = false;
 protected:
 
-
-
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
+private:
+	UPROPERTY()
+	bool bHasProcessedCatch = false;
 public:
 	FORCEINLINE class USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
 

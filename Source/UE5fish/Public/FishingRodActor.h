@@ -152,6 +152,9 @@ public:
         float MaxResistanceMultiplier
     );
 
+    UPROPERTY()
+    bool bHasCalledEndBattle = false;
+
 protected:
     /** 状態フラグ */
     bool bIsCasting = false;

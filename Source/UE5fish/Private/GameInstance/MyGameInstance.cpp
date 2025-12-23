@@ -23,5 +23,26 @@ void UMyGameInstance::RegisterFishToAlbum(FString Name, float Size, UTexture2D* 
         Data.FishIcon = Icon;
     }
 
-    UE_LOG(LogTemp, Warning, TEXT("System: RegisterFishToAlbum - %s (Size: %.1f)"), *Name, Size);
+    UE_LOG(LogTemp, Warning, TEXT("ALBUM: Registered %s. Total Caught: %d"), *Name, Data.TimesCaught);
+}
+
+void UMyGameInstance::InitializeAlbumFromTable(UDataTable* FishTable)
+{
+    if (!FishTable) return;
+
+    TArray<FFishingFishData*> AllRows;
+    FishTable->GetAllRows<FFishingFishData>(TEXT("Init"), AllRows);
+
+    for (FFishingFishData* Row : AllRows)
+    {
+        // まだ図鑑に名前がない場合だけ、回数0の空データを入れる
+        if (!GlobalFishAlbum.Contains(Row->FishName))
+        {
+            FFishAlbumData EmptyData;
+            EmptyData.TimesCaught = 0; // これが0なら「未発見」扱い
+            EmptyData.MaxSize = 0.0f;
+            EmptyData.FishIcon = Row->UITexture;
+            GlobalFishAlbum.Add(Row->FishName, EmptyData);
+        }
+    }
 }

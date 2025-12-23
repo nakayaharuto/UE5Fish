@@ -56,6 +56,7 @@ void AFishingRodActor::SpawnCaughtFish()
 
 void AFishingRodActor::ResetRodState()
 {
+    bHasCalledEndBattle = false;
     // ルアーを安全にリセット（Destroyする前にケーブルの参照を解除）
     ResetLure();
 
@@ -470,11 +471,11 @@ void AFishingRodActor::UpdateBattleGaugeUI(float CurrentValue, float MaxValue)
 
 void AFishingRodActor::EndFishBattle(bool bSuccess)
 {
+    if (bHasCalledEndBattle) return;
+    bHasCalledEndBattle = true;
+
     bIsPlayerReeling = false;
 
-    // UI通知
-    OnEndFishBattle.Broadcast(bSuccess);
-    UE_LOG(LogTemp, Warning, TEXT("111動いているかい"));
     if (bSuccess)
     {
         // 成功の場合、リールアップを開始し、ルアーを竿先まで引き戻す
@@ -484,26 +485,6 @@ void AFishingRodActor::EndFishBattle(bool bSuccess)
             bIsReeling = true;
             StartReel();
            
-        }
-        UE_LOG(LogTemp, Warning, TEXT("畜生やられ千葉"));
-        if(APlayerController * PC = UGameplayStatics::GetPlayerController(this, 0))
-        {
-            if (AMyCharacter* MyChar = Cast<AMyCharacter>(PC->GetPawn()))
-            {
-                if (CaughtFish)
-                {
-                    FText FishNameText = FText::FromString(CaughtFish->FishName);
-
-                    UE_LOG(LogTemp, Warning, TEXT("動いているかい"));
-                    // 引数の順番：名前, サイズ, 画像, レアリティ
-                    MyChar->HandleFishCaught(
-                        FishNameText,
-                        CaughtFish->SizeCm,
-                        CaughtFish->UITexture,
-                        CaughtFish->Rarity
-                    );
-                }
-            }
         }
     }
     else
@@ -526,6 +507,9 @@ void AFishingRodActor::EndFishBattle(bool bSuccess)
     // ゲージリセット（任意）
     PlayerGauge = 0.f;
     FishGauge = 0.f;
+
+    // UI通知
+    OnEndFishBattle.Broadcast(bSuccess);
 }
 
 void AFishingRodActor::OnFishCaught()
@@ -543,25 +527,40 @@ void AFishingRodActor::OnFishCaught()
 void AFishingRodActor::SpawnFish()
 {
     // データテーブルとスポーン対象クラスの基本的なチェック
-    if (!FishDataTable || !FishClass)
-    {
-        UE_LOG(LogTemp, Error, TEXT("SpawnFish failed: FishDataTable or FishClass is missing."));
-        return;
-    }
+    if (!FishDataTable || !FishClass) return;
 
-    // 1. データテーブルから全行を取得
     TArray<FFishingFishData*> AllRows;
-    // FFishData が定義されているヘッダーをインクルードしている必要があります
-    FishDataTable->GetAllRows<FFishingFishData>(TEXT("FishingRod_SpawnFish"), AllRows);
+    FishDataTable->GetAllRows<FFishingFishData>(TEXT("SpawnLogic"), AllRows);
 
-    if (AllRows.Num() == 0)
+    if (AllRows.Num() == 0) return;
+
+    // --- 確率の「重み」を計算 ---
+    float TotalWeight = 0.0f;
+    TArray<float> RowWeights;
+
+    for (FFishingFishData* Row : AllRows)
     {
-        UE_LOG(LogTemp, Warning, TEXT("SpawnFish failed: FishDataTable contains no rows."));
-        return;
+        // レア度が高いほど重みを小さくする計算式
+        // 例: レア1=100.0, レア2=20.0, レア3=4.0 ... 
+        float Weight = 100.0f / FMath::Max(1.0f, FMath::Pow(5.0f, (float)(Row->Rarity - 1)));
+        RowWeights.Add(Weight);
+        TotalWeight += Weight;
     }
 
-    // 2. 確率や重み付けに基づき、ランダムな魚を選択
-    const FFishingFishData* SelectedFishData = AllRows[FMath::RandRange(0, AllRows.Num() - 1)];
+    // --- 抽選実行 ---
+    float RandomPoint = FMath::FRandRange(0.0f, TotalWeight);
+    float CurrentWeightSum = 0.0f;
+    FFishingFishData* SelectedFishData = nullptr;
+
+    for (int32 i = 0; i < AllRows.Num(); i++)
+    {
+        CurrentWeightSum += RowWeights[i];
+        if (RandomPoint <= CurrentWeightSum)
+        {
+            SelectedFishData = AllRows[i];
+            break;
+        }
+    }
 
     if (SelectedFishData)
     {
