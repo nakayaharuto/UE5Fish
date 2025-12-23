@@ -298,39 +298,31 @@ void AMyCharacter::HandleFishCaught(FText FishName, float Size, UTexture2D* Fish
 		UE_LOG(LogTemp, Error, TEXT("UI Error: PlayerController (PC) is NULL."));
 	}
 
-	// 1. GameInstance を取得してキャスト
+	// --- 1. 図鑑登録（ここで一括管理） ---
 	if (UMyGameInstance* GI = Cast<UMyGameInstance>(GetGameInstance()))
 	{
-		// 2. システム側の図鑑に登録！
+		// .ToString() を使って FString に変換して渡す
 		GI->RegisterFishToAlbum(FishName.ToString(), Size, FishImage);
+		UE_LOG(LogTemp, Warning, TEXT("!!! Data Registered: %s !!!"), *FishName.ToString());
 	}
 
-	// 既にウィジェットが表示中の場合は、一度破棄してから再作成
+	// --- 2. ウィジェットの管理（既存の処理） ---
 	if (CurrentCaughtFishWidget && CurrentCaughtFishWidget->IsInViewport())
 	{
 		CurrentCaughtFishWidget->RemoveFromParent();
-		CurrentCaughtFishWidget = nullptr;
 	}
 
-	// 2. ウィジェットの生成
-	// CaughtFishWidgetClass は TSubclassOf<class UCaughtFish> で宣言されているはずです。
 	CurrentCaughtFishWidget = CreateWidget<UCaughtFish>(PC, CaughtFishWidgetClass);
 
 	if (CurrentCaughtFishWidget)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("UI LOG: Successfully created CaughtFish widget."));
+		// 魚のアクター自体をセットする処理（もしあれば）
+		// CurrentCaughtFishWidget->CurrentFishActor = ... ; 
 
-		// 3. データをウィジェットに設定
+		// データをウィジェットに設定
 		CurrentCaughtFishWidget->SetFishData(FishName, Size, FishImage, Rarity);
 
-		// 4. 画面に表示
-		CurrentCaughtFishWidget->AddToViewport();
-
-		// 5. 入力モードの切り替え (推奨)
-		FInputModeUIOnly InputMode;
-		InputMode.SetWidgetToFocus(CurrentCaughtFishWidget->TakeWidget());
-		PC->SetInputMode(InputMode);
-		PC->bShowMouseCursor = true;
+		// AddToViewportなどはSetFishData内で実装済みなら省略可能です
 	}
 }
 

@@ -7,10 +7,6 @@
 #include "FishData.h"
 #include "MyGameInstance.generated.h"
 
-/**
- * 
- * 
- */
 UCLASS()
 class UE5FISH_API UMyGameInstance : public UGameInstance
 {
@@ -23,4 +19,5 @@ public:
     // ãõÇí«â¡Ç∑ÇÈã§í ä÷êî
     UFUNCTION(BlueprintCallable, Category = "Collection")
     void RegisterFishToAlbum(FString Name, float Size, UTexture2D* Icon);
+
 };

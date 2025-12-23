@@ -62,4 +62,5 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Fish")
 	float PlayerGaugeDecayContribution;
+
 };

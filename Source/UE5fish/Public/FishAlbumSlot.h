@@ -16,8 +16,7 @@ class UE5FISH_API UFishAlbumSlot : public UUserWidget
 public:
 	// BP側のテキストや画像にデータを流し込む関数
 	UFUNCTION(BlueprintCallable, Category = "UI")
-	
-	void OnSetFishData(const FString& Name, int32 Count, float MaxSize, UTexture2D* Icon);
+    void OnSetFishData(FString Name, int32 CaughtCount, float MaxSize, UTexture2D* Icon);
 
 protected:
     // meta = (BindWidget) をつけると、BP側の同名のウィジェットと自動で紐付きます

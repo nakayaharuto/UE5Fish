@@ -44,6 +44,12 @@ void AFishingHUD::ToggleFishAlbum()
             GetOwningPlayerController()->SetInputMode(FInputModeGameOnly());
         }
     }
+
+    if (AlbumWidget && AlbumWidget->IsInViewport())
+    {
+        // 図鑑が表示されたら、最新のデータをリストに反映させる
+        RefreshAlbum(AlbumWidget);
+    }
 }
 
 //図鑑を開いた時の処理
