@@ -7,10 +7,9 @@ AFishActor::AFishActor()
 {
     PrimaryActorTick.bCanEverTick = false;
 
-    Mesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Mesh"));
-    RootComponent = Mesh;
-    Mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-    SetLifeSpan(6.f); // 6秒で自動消去（必要なければ削除）
+    //Mesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Mesh"));
+    //RootComponent = Mesh;
+    //Mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 }
 
 void AFishActor::BeginPlay()
@@ -22,10 +21,7 @@ void AFishActor::BeginPlay()
 
 void AFishActor::ShowFish()
 {
-    Mesh->SetVisibility(true);
-
-    //3秒後非表示へ
-    GetWorldTimerManager().SetTimer(HideTimerHandle, this, &AFishActor::HideFish, 3.f, false);
+  
 }
 
 float AFishActor::GetCurrentDynamicResistance(float CurrentFishGauge, float GaugeMax) const
@@ -50,7 +46,7 @@ float AFishActor::GetCurrentDynamicResistance(float CurrentFishGauge, float Gaug
 
 void AFishActor::HideFish()
 {
-    Mesh->SetVisibility(false);
+    //Mesh->SetVisibility(false);
 }
 
 

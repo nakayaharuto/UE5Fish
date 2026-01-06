@@ -430,7 +430,7 @@ void AFishingRodActor::OnReelClick()
 
 void AFishingRodActor::CheckFishBattleState()
 {
-    if (!bIsFishBattle) return;
+    if (!bIsFishBattle || bHasCalledEndBattle) return;
 
     // 敗北判定 2: プレイヤーゲージが MAX になった（ラインブレイク）
     if (PlayerGauge >= GaugeMax)

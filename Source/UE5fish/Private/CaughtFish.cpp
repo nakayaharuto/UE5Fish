@@ -28,15 +28,6 @@ void UCaughtFish::SetFishData(FText FishName, float Size, UTexture2D* FishImage,
 {
     // 魚のデータを使って UI テキストを更新
     // (AFishActorに FishName, SizeCm, Rarity が定義されている前提)
-
-    UMyGameInstance* GI = Cast<UMyGameInstance>(GetGameInstance());
-    if (GI)
-    {
-        // 先ほどMyGameInstance.cppで作った関数を呼び出す
-        GI->RegisterFishToAlbum(FishName.ToString(), Size, FishImage);
-        UE_LOG(LogTemp, Warning, TEXT("!!! Data Registered: %s !!!"), *FishName.ToString());
-    }
-
     if (Text_FishName)
     {
         UE_LOG(LogTemp, Log, TEXT("UI Set Name: %s"), *FishName.ToString());

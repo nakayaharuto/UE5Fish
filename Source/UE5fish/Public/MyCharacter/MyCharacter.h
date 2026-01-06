@@ -103,8 +103,6 @@ public:
 	void HideFishingUI(bool bSuccess);
 
 	// UIウィジェットのクラスリファレンス
-	UPROPERTY(EditDefaultsOnly, Category = "UI")
-	TSubclassOf<class UCaughtFish> CaughtFishClass;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Fishing UI")
 	TSubclassOf<class UCaughtFish> CaughtFishWidgetClass;
@@ -122,7 +120,8 @@ public:
 	// 魚がヒットした時に呼ばれる関数
 	void PlayFishHitAnimation();
 
-	
+	UFUNCTION(BlueprintCallable, Category = "Fishing")
+	void ResetCatchFlag() { bHasProcessedCatch = false; }
 
 public:
 	// Sets default values for this character's properties

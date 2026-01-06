@@ -174,7 +174,6 @@ void AMyCharacter::Inventory(const FInputActionValue& Value)
 	// 自分のHUDを取得してトグル関数を呼ぶだけ
 	if (AFishingHUD* FishingHUD = Cast<AFishingHUD>(GetWorld()->GetFirstPlayerController()->GetHUD()))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("iaiaiaiaiaia"));
 		FishingHUD->ToggleFishAlbum();
 	}
 }
@@ -195,9 +194,7 @@ void AMyCharacter::ShowFishingUI()
 
 void AMyCharacter::HideFishingUI(bool bSuccess)
 {
-	if (bHasProcessedCatch) return;
-
-	UE_LOG(LogTemp, Warning, TEXT("Character: HideFishingUI called. Success: %d"), bSuccess ? 1 : 0);
+	if (bSuccess && bHasProcessedCatch) return;
 
 	if (FishingBattleWidget)
 	{
@@ -224,7 +221,7 @@ void AMyCharacter::HideFishingUI(bool bSuccess)
 	else
 	{
 		// 失敗（ラインブレイク等）の時も、この回のバトルは終了なのでフラグを立てておく
-		bHasProcessedCatch = true;
+		bHasProcessedCatch = false;
 	}
 }
 
@@ -335,27 +332,31 @@ void AMyCharacter::StopReelInput(const FInputActionValue& Value)
 
 void AMyCharacter::HandleFishCaught(FText FishName, float Size, UTexture2D* FishImage, int32 Rarity)
 {
-	APlayerController* PC = GetController<APlayerController>();
-	if (!CaughtFishWidgetClass)
+	static FString LastCaughtName = "";
+	static float LastCaughtSize = -1.f;
+
+	FString CurrentFishInfo = FishName.ToString() + FString::SanitizeFloat(Size);
+	FString LastFishInfo = LastCaughtName + FString::SanitizeFloat(LastCaughtSize);
+
+	if (CurrentFishInfo == LastFishInfo)
 	{
-		UE_LOG(LogTemp, Error, TEXT("UI Error: CaughtFishWidgetClass is NULL. (Blueprintで設定されていません)"));
-	}
-	if (!PC)
-	{
-		UE_LOG(LogTemp, Error, TEXT("UI Error: PlayerController (PC) is NULL."));
+		return;
 	}
 
+	LastCaughtName = FishName.ToString();
+	LastCaughtSize = Size;
+
+	APlayerController* PC = GetController<APlayerController>();
+	
 	// --- 1. 図鑑登録（ここで一括管理） ---
 	if (UMyGameInstance* GI = Cast<UMyGameInstance>(GetGameInstance()))
 	{
-		// もし HideFishingUI 以外からここが呼ばれてもいいように、
-		// RegisterFishToAlbum 自体を「1回のリザルトで1回」に制限したい場合はここでもフラグを見ます
 		GI->RegisterFishToAlbum(FishName.ToString(), Size, FishImage);
 		UE_LOG(LogTemp, Warning, TEXT("!!! HandleFishCaught: Data Registered: %s !!!"), *FishName.ToString());
 	}
 
 	// --- 2. ウィジェットの管理（既存の処理） ---
-	if (CurrentCaughtFishWidget && CurrentCaughtFishWidget->IsInViewport())
+	if (CurrentCaughtFishWidget)
 	{
 		CurrentCaughtFishWidget->RemoveFromParent();
 	}
@@ -366,7 +367,6 @@ void AMyCharacter::HandleFishCaught(FText FishName, float Size, UTexture2D* Fish
 		if (CurrentCaughtFishWidget)
 		{
 			CurrentCaughtFishWidget->SetFishData(FishName, Size, FishImage, Rarity);
-			// ※ SetFishData の中で AddToViewport していない場合は、ここで呼ぶ必要があります
 			CurrentCaughtFishWidget->AddToViewport();
 		}
 	}
