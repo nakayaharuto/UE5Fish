@@ -59,6 +59,6 @@ private:
     float CurrentTime = 12.0f; // 12:00 スタート
 
     bool IsDay() const;
-    void UpdateLightPriority();
+    //void UpdateLightPriority();
     void UpdateSunRotation(float DeltaTime);
 };

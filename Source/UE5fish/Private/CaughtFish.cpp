@@ -44,7 +44,7 @@ void UCaughtFish::SetFishData(FText FishName, float Size, UTexture2D* FishImage,
     if (Text_Rarity)
     {
         // Rarity を FText に変換
-        FString RarityString = FString::Printf(TEXT("Rarity: %d"), Rarity);
+        FString RarityString = FString::Printf(TEXT("Rarity : %d"), Rarity);
         Text_Rarity->SetText(FText::FromString(RarityString));
     }
 
@@ -104,5 +104,18 @@ void UCaughtFish::OnCloseButtonClicked()
         PC->SetInputMode(FInputModeGameOnly());
         // マウスカーソルを非表示にする
         PC->bShowMouseCursor = false;
+    }
+}
+
+FLinearColor UCaughtFish::GetColorByRarity(int32 Rarity)
+{
+    switch (Rarity)
+    {
+    case 1: return FLinearColor::White;
+    case 2: return FLinearColor(0.1f,1.0f,0.1f);
+    case 3: return FLinearColor(0.1f,0.5f,1.0f);
+    case 4: return FLinearColor(1.1f,0.0f,1.0f);
+    case 5: return FLinearColor(1.0f,0.35f,0.0f);
+    default: return FLinearColor::White;
     }
 }

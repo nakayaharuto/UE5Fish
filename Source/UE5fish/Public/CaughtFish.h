@@ -33,6 +33,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "UI")
 	void SetFishData(FText FishName, float Size, UTexture2D* FishImage, int32 Rarity);
 
+	//ƒŒƒA“x‚É‰‚¶‚½F‚ğ•Ô‚·
+	UFUNCTION(BlueprintPure, Category = "Fishing UI")
+	FLinearColor GetColorByRarity(int32 Rarity);
+
 public:
 	UPROPERTY(meta = (BindWidget))
 	class UTextBlock* Text_FishName;
