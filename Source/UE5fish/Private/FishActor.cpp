@@ -56,15 +56,15 @@ void AFishActor::Tick(float DeletaTime)
 
 }
 
-void AFishActor::SetFishData(const FString& Name, float Size, int32 InRarity,  float PlayerGaugeDecay, float InBaseResistance,
-    float InMaxResistanceMultiplier, UTexture2D* InTexture)
+void AFishActor::SetFishData(const FString& Name, float Size, float PlayerGaugeDecay, float InBaseResistance,
+    float InMaxResistanceMultiplier, UTexture2D* InTexture, FText InDescripion)
 {
 
     FishName = Name;
     SizeCm = Size;
-    Rarity = InRarity;
     this->PlayerGaugeDecayContribution = PlayerGaugeDecay; // これを追加！
     this->BaseResistance = InBaseResistance;               // これを追加！
     this->MaxResistanceMultiplier = InMaxResistanceMultiplier; // これを追加！
     this->UITexture = InTexture; // UI用の画像をここで受け取る
+    this->FishDescription = InDescripion;
 }

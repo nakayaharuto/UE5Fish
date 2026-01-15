@@ -146,10 +146,10 @@ public:
     void SetFishData(
         const FString& Name,
         float Size,
-        int32 Rarity,
         float PlayerGaugeDecayContribution,
         float BaseResistance,
-        float MaxResistanceMultiplier
+        float MaxResistanceMultiplier,
+        FText FishDescription
     );
 
     UPROPERTY()

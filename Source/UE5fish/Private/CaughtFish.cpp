@@ -24,7 +24,7 @@ bool UCaughtFish::Initialize()
     return true;
 }
 
-void UCaughtFish::SetFishData(FText FishName, float Size, UTexture2D* FishImage, int32 Rarity)
+void UCaughtFish::SetFishData(FText FishName, float Size, UTexture2D* FishImage, FText Description)
 {
     // 魚のデータを使って UI テキストを更新
     // (AFishActorに FishName, SizeCm, Rarity が定義されている前提)
@@ -41,13 +41,6 @@ void UCaughtFish::SetFishData(FText FishName, float Size, UTexture2D* FishImage,
         Text_Size->SetText(FText::FromString(SizeString));
     }
 
-    if (Text_Rarity)
-    {
-        // Rarity を FText に変換
-        FString RarityString = FString::Printf(TEXT("Rarity : %d"), Rarity);
-        Text_Rarity->SetText(FText::FromString(RarityString));
-    }
-
     if (Image_FishIcon)
     {
         if (FishImage)
@@ -58,6 +51,11 @@ void UCaughtFish::SetFishData(FText FishName, float Size, UTexture2D* FishImage,
         {
             UE_LOG(LogTemp, Error, TEXT("UCaughtFish: FishImage is NULL!"));
         }
+    }
+
+    if (Text_Description)
+    {
+        Text_Description->SetText(Description);
     }
 
     if (!IsInViewport())
@@ -104,18 +102,5 @@ void UCaughtFish::OnCloseButtonClicked()
         PC->SetInputMode(FInputModeGameOnly());
         // マウスカーソルを非表示にする
         PC->bShowMouseCursor = false;
-    }
-}
-
-FLinearColor UCaughtFish::GetColorByRarity(int32 Rarity)
-{
-    switch (Rarity)
-    {
-    case 1: return FLinearColor::White;
-    case 2: return FLinearColor(0.1f,1.0f,0.1f);
-    case 3: return FLinearColor(0.1f,0.5f,1.0f);
-    case 4: return FLinearColor(1.1f,0.0f,1.0f);
-    case 5: return FLinearColor(1.0f,0.35f,0.0f);
-    default: return FLinearColor::White;
     }
 }

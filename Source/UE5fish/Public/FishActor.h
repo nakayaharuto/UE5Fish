@@ -44,16 +44,16 @@ public:
     float SizeCm; // 大きさ
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FishData")
-    int32 Rarity; // レア度 (1:コモン, 5:レジェンドなど)
+    class UTexture2D* UITexture;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FishData")
-    class UTexture2D* UITexture;
+    FText FishDescription;
 
     void ShowFish();
     void HideFish();
 
-    void SetFishData(const FString& Name, float Size, int32 InRarity, float PlayerGaugeDecay, float InBaseResistance,
-        float InMaxResistanceMultiplier, UTexture2D* InTexture);
+    void SetFishData(const FString& Name, float Size, float PlayerGaugeDecay, float InBaseResistance,
+        float InMaxResistanceMultiplier, UTexture2D* InTexture, FText InDescripion);
 
 protected:
     virtual void BeginPlay() override;

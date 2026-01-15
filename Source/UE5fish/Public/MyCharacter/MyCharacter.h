@@ -112,7 +112,7 @@ public:
 	UCaughtFish* CurrentCaughtFishWidget;
 	// ’Ş‰ÊƒCƒxƒ“ƒg‚ğó‚¯æ‚éŠÖ”
 	UFUNCTION() 
-		void HandleFishCaught(FText FishName, float Size, UTexture2D* FishImage, int32 Rarity);
+		void HandleFishCaught(FText FishName, float Size, UTexture2D* FishImage);
 
 	UFUNCTION(BlueprintCallable, Category = "Fishing UI")
 	void CloseCaughtFishUI();

@@ -31,11 +31,7 @@ public:
 	void OnCloseButtonClicked();
 
 	UFUNCTION(BlueprintCallable, Category = "UI")
-	void SetFishData(FText FishName, float Size, UTexture2D* FishImage, int32 Rarity);
-
-	//ÉåÉAìxÇ…âûÇ∂ÇΩêFÇï‘Ç∑
-	UFUNCTION(BlueprintPure, Category = "Fishing UI")
-	FLinearColor GetColorByRarity(int32 Rarity);
+	void SetFishData(FText FishName, float Size, UTexture2D* FishImage, FText Description);
 
 public:
 	UPROPERTY(meta = (BindWidget))
@@ -45,12 +41,11 @@ public:
 	class UTextBlock* Text_Size;
 
 	UPROPERTY(meta = (BindWidget))
-	class UTextBlock* Text_Rarity;
-
-	UPROPERTY(meta = (BindWidget))
 	class UImage* Image_FishIcon;
 
 	UPROPERTY(meta = (BindWidget))
 	class UButton* Button_Exit;
 
+	UPROPERTY(meta = (BindWidget))
+	class UTextBlock* Text_Description;
 };

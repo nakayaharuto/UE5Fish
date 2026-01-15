@@ -15,22 +15,27 @@ ALureActor::ALureActor()
 
     Mesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Mesh"));
     RootComponent = Mesh;
-    
-    Mesh->BodyInstance.bUseCCD = true;
-    Mesh->SetCollisionProfileName(TEXT("PhysicsActor"));
-    Mesh->SetMassOverrideInKg(NAME_None, 0.2f);
-    Mesh->SetLinearDamping(0.05f);
-    Mesh->SetAngularDamping(0.05f);
-    Mesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-    Mesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Block);
-    Mesh->SetCollisionObjectType(ECC_PhysicsBody);
 
-    // Cable を内部にも持たせておく（視認用、ただし竿の LineCable を使うのが最優先）
     Cable = CreateDefaultSubobject<UCableComponent>(TEXT("Cable"));
     Cable->SetupAttachment(Mesh);
-    Cable->bAttachEnd = true;
-    Cable->CableLength = 200.f;
-    Cable->NumSegments = 12;
+    
+    if (!HasAnyFlags(RF_ClassDefaultObject))
+    {
+        // メッシュの物理設定
+        Mesh->BodyInstance.bUseCCD = true;
+        Mesh->SetCollisionProfileName(TEXT("PhysicsActor"));
+        Mesh->SetMassOverrideInKg(NAME_None, 0.2f);
+        Mesh->SetLinearDamping(0.05f);
+        Mesh->SetAngularDamping(0.05f);
+        Mesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+        Mesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Block);
+        Mesh->SetCollisionObjectType(ECC_PhysicsBody);
+
+        // ケーブルの設定
+        Cable->bAttachEnd = true;
+        Cable->CableLength = 200.f;
+        Cable->NumSegments = 12;
+    }
     Cable->SetVisibility(false); // 初期は竿側の Cable を使う
 }
 

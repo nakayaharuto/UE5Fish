@@ -17,16 +17,19 @@ AFishingRodActor::AFishingRodActor()
     // ケーブル作成
     LineCable = CreateDefaultSubobject<UCableComponent>(TEXT("LineCable"));
     LineCable->SetupAttachment(RodMesh, TEXT("RodTip")); // ソケット RodTip からスタート
-    LineCable->bAttachEnd = true; // 後でルアーに付ける
-    LineCable->EndLocation = FVector::ZeroVector;
-    LineCable->CableLength = 100.f; // 初期長さ
-    LineCable->NumSegments = 20;
-    LineCable->SubstepTime = 0.02f;
-    LineCable->SolverIterations = 8;
-    LineCable->CableWidth = 2.f;
-    LineCable->bEnableCollision = false;
     LineCable->SetVisibility(false); // 初期は非表示
 
+    if (!HasAnyFlags(RF_ClassDefaultObject))
+    {
+        LineCable->bAttachEnd = true; // 後でルアーに付ける
+        LineCable->EndLocation = FVector::ZeroVector;
+        LineCable->CableLength = 100.f; // 初期長さ
+        LineCable->NumSegments = 20;
+        LineCable->SubstepTime = 0.02f;
+        LineCable->SolverIterations = 8;
+        LineCable->CableWidth = 2.f;
+        LineCable->bEnableCollision = false;
+    }
     // デフォルトゲージ値
     PlayerGauge = 0.f;
     FishGauge = 0.f;
@@ -588,11 +591,11 @@ void AFishingRodActor::SpawnFish()
             CaughtFish->SetFishData(
                 SelectedFishData->FishName,
                 ActualSize,
-                SelectedFishData->Rarity,
                 SelectedFishData->PlayerGaugeDecayContribution,
                 SelectedFishData->BaseResistance,
                 SelectedFishData->MaxResistanceMultiplier,
-                SelectedFishData->UITexture
+                SelectedFishData->UITexture,
+                SelectedFishData->FishDescription
             );
 
             // 例外: FFishData にある Decay 係数を、AFishActor の UPROPERTY に直接設定

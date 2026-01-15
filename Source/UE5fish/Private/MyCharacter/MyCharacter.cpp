@@ -213,8 +213,7 @@ void AMyCharacter::HideFishingUI(bool bSuccess)
 			HandleFishCaught(
 				FText::FromString(FishingRod->CaughtFish->FishName),
 				FishingRod->CaughtFish->SizeCm,
-				FishingRod->CaughtFish->UITexture,
-				FishingRod->CaughtFish->Rarity
+				FishingRod->CaughtFish->UITexture
 			);
 		}
 	}
@@ -330,7 +329,7 @@ void AMyCharacter::StopReelInput(const FInputActionValue& Value)
 
 }
 
-void AMyCharacter::HandleFishCaught(FText FishName, float Size, UTexture2D* FishImage, int32 Rarity)
+void AMyCharacter::HandleFishCaught(FText FishName, float Size, UTexture2D* FishImage)
 {
 	static FString LastCaughtName = "";
 	static float LastCaughtSize = -1.f;
@@ -366,7 +365,7 @@ void AMyCharacter::HandleFishCaught(FText FishName, float Size, UTexture2D* Fish
 		CurrentCaughtFishWidget = CreateWidget<UCaughtFish>(PC, CaughtFishWidgetClass);
 		if (CurrentCaughtFishWidget)
 		{
-			CurrentCaughtFishWidget->SetFishData(FishName, Size, FishImage, Rarity);
+			CurrentCaughtFishWidget->SetFishData(FishName, Size, FishImage, FishingRod->CaughtFish->FishDescription);
 			CurrentCaughtFishWidget->AddToViewport();
 		}
 	}
