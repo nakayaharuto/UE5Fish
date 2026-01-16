@@ -389,6 +389,15 @@ void AMyCharacter::CloseCaughtFishUI()
 	}
 }
 
+void AMyCharacter::StartFishAnimation()
+{
+	if (StartFishMontage)
+	{
+		PlayAnimMontage(StartFishMontage);
+	}
+}
+
+
 void AMyCharacter::PlayFishHitAnimation()
 {
 	if (FishHitMontage)

@@ -117,6 +117,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Fishing UI")
 	void CloseCaughtFishUI();
 
+	//’Ş‚èŠÆ‚ğæ‚èo‚µ‚½
+	void StartFishAnimation();
+
 	// ‹›‚ªƒqƒbƒg‚µ‚½‚ÉŒÄ‚Î‚ê‚éŠÖ”
 	void PlayFishHitAnimation();
 
@@ -142,7 +145,8 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animations")
 	UAnimMontage* FishHitMontage;
 	
-
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animations")
+	UAnimMontage* StartFishMontage;
 
 	/// <summary>
 	/// “ü—Í
