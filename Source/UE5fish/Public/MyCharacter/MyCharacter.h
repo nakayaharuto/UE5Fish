@@ -126,6 +126,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Fishing")
 	void ResetCatchFlag() { bHasProcessedCatch = false; }
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animations")
+	UAnimMontage* FishHitMontage;
+
 public:
 	// Sets default values for this character's properties
 	AMyCharacter();
@@ -142,8 +145,7 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Fishing, meta = (AllowPrivateAccess = "true"))
 	ALureActor* LureActor;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animations")
-	UAnimMontage* FishHitMontage;
+	
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animations")
 	UAnimMontage* StartFishMontage;

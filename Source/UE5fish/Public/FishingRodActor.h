@@ -24,34 +24,58 @@ public:
     void ResetRodState();//釣り竿の状態リセット
     void InstantCast();
 
-    /** 竿メッシュ */
-    UPROPERTY(VisibleAnywhere)
+    //////////////////////////////////////////////////////////////////////////
+    //------釣り竿------
+   
+    UPROPERTY(VisibleAnywhere)  /** 竿メッシュ */
     USkeletalMeshComponent* RodMesh;
 
-    /** ケーブルで糸を可視化 */
-    UPROPERTY(VisibleAnywhere)
+    UPROPERTY(VisibleAnywhere)  /** ケーブルで糸を可視化 */
     UCableComponent* LineCable;
 
-    /** 現在のルアー */
-    UPROPERTY()
+    UPROPERTY()                 /** 現在のルアー */
     ALureActor* CurrentLure;
-
-    /** 現在釣れた魚 */
-    UPROPERTY()
+   
+    UPROPERTY()                 /** 現在釣れた魚 */  
     AFishActor* CaughtFish;
 
-    /** ルアーのクラス */
-    UPROPERTY(EditAnywhere)
-    TSubclassOf<ALureActor> LureClass;
+    /** ルアーをキャスト */
+    UFUNCTION(BlueprintCallable)
+    void CastToLocation(const FVector& TargetLocation);
 
-    /** 魚クラス */
-    UPROPERTY(EditAnywhere)
+    /** 巻き取り開始・停止 */
+    UFUNCTION()
+    void StartReel();
+    UFUNCTION()
+    void StopReel();
+
+    //------ヒット・キャッチ処理-----
+    UFUNCTION()
+    void SpawnCaughtFish();
+    UFUNCTION()
+    void SpawnLure();
+    UFUNCTION()
+    void ResetLure();
+    UFUNCTION()
+    void SpawnFish();
+
+    UFUNCTION()
+    void ReelProgress(float DeltaTime);
+
+    //////////////////////////////////////////////////////////////////////////
+    //-----別クラス-----
+    UPROPERTY(EditAnywhere)     /** ルアーのクラス */
+    TSubclassOf<ALureActor> LureClass;
+   
+    UPROPERTY(EditAnywhere)     /** 魚クラス */ 
     TSubclassOf<AFishActor> FishClass;
 
-    /** 魚表示ウィジェット */
+                                /** 魚表示ウィジェット */
     UPROPERTY(BlueprintAssignable, Category = "Fishing")
     FOnFishCaughtUI OnFishCaughtUI;
 
+    //////////////////////////////////////////////////////////////////////////
+    //-----バトル処理関数-----
     UPROPERTY(BlueprintAssignable)
     FFishBattleEvent OnStartFishBattle;
 
@@ -65,31 +89,8 @@ public:
     UFUNCTION()
     void OnFishHitEvent();
 
-    /** ルアーをキャスト */
-    UFUNCTION(BlueprintCallable)
-    void CastToLocation(const FVector& TargetLocation);
-
-    /** 巻き取り開始・停止 */
-    UFUNCTION()
-    void StartReel();
-    UFUNCTION()
-    void StopReel();
-
     UPROPERTY(EditAnywhere, BlueprintReadWrite) // BPから設定したいなら
     bool bEquipped = false;
-
-    /** ヒット・キャッチ処理 */
-    UFUNCTION()
-    void SpawnCaughtFish();
-    UFUNCTION()
-    void SpawnLure();
-    UFUNCTION()
-    void ResetLure();
-    UFUNCTION()
-    void SpawnFish();
-
-    UFUNCTION()
-    void ReelProgress(float DeltaTime);
 
     // --- 新：2ゲージ バトル用 API ---
     /** プレイヤーが左クリック（リールクリック）した時に呼ぶ */
@@ -100,9 +101,10 @@ public:
     UPROPERTY(BlueprintReadOnly)
     float PlayerGauge = 0.f;
 
-    UPROPERTY(BlueprintReadOnly)
+    UPROPERTY(BlueprintReadOnly)    /** 魚ゲージの初期値 */
     float FishGauge = 0.f;
 
+                                    /** ゲージのMAX値 */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Battle")
     float GaugeMax = 100.f;
 
@@ -143,7 +145,8 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Fishing|Battle")
     float MaxGaugeValue = 100.0f;
 
-    void SetFishData(
+    //////////////////////////////////////////////////////////////////////////
+    void SetFishData(       //データテーブル内の取得
         const FString& Name,
         float Size,
         float PlayerGaugeDecayContribution,
@@ -156,7 +159,7 @@ public:
     bool bHasCalledEndBattle = false;
 
 protected:
-    /** 状態フラグ */
+    // --- 内部状態管理フラグ（重要：バトルの挙動を制御） ---
     bool bIsCasting = false;
     bool bIsReeling = false;
     bool bIsFishBiting = false;
@@ -192,7 +195,4 @@ private:
     void EndFishBattle(bool bSuccess);
 
     float CalculateFishResistance();
-
-    /** UIを更新する関数（ゲージの値をBP/ウィジェットに送る） */
-    void UpdateBattleGaugeUI(float CurrentValue, float MaxValue);
 };

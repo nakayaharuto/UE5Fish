@@ -2,13 +2,25 @@
 
 
 #include "FishAlbumSlot.h"
+#include "Components/Button.h"
 #include "Components/TextBlock.h"
 #include "Components/Image.h"
+
+void UFishAlbumSlot::NativeConstruct()
+{
+    Super::NativeConstruct();
+    if (Button_FishSelect)
+    {
+        Button_FishSelect->OnClicked.AddDynamic(this, &UFishAlbumSlot::InternalOnClicked);
+    }
+}
 
 void UFishAlbumSlot::OnSetFishData(FString Name, int32 CaughtCount, float MaxSize, UTexture2D* Icon)
 {
     // 1. 釣ったことがあるか判定
     bool bIsDiscovered = (CaughtCount > 0);
+
+    MyFishName = Name;
 
     // 2. 名前の表示設定
     if (Text_FishName)
@@ -49,4 +61,10 @@ void UFishAlbumSlot::OnSetFishData(FString Name, int32 CaughtCount, float MaxSiz
             Image_FishIcon->SetColorAndOpacity(FLinearColor::Black);
         }
     }
+}
+
+void UFishAlbumSlot::InternalOnClicked()
+{
+    // クリックされたら、自分の魚の名前を飛ばす
+    OnSlotClicked.Broadcast(MyFishName);
 }

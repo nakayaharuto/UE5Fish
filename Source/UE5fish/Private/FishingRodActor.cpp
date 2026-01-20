@@ -1,6 +1,7 @@
 ﻿#include "FishingRodActor.h"
 #include "LureActor.h"
 #include "MyCharacter/MyCharacter.h"
+#include "Animation/AnimInstance.h"
 #include "FishActor.h"
 #include "FishData.h"
 #include "Engine/EngineTypes.h"
@@ -47,6 +48,8 @@ void AFishingRodActor::BeginPlay()
     Super::BeginPlay();
 }
 
+//////////////////////////////////////////////////////////////////////////
+//釣り竿のスポーン、リセットなど
 void AFishingRodActor::SpawnCaughtFish()
 {
     UE_LOG(LogTemp, Warning, TEXT("SpawnCaughtFish called"));
@@ -177,6 +180,7 @@ void AFishingRodActor::CastToLocation(const FVector& InTargetLocation)
 
 }
 
+//プレイヤーからの入力で動く処理
 void AFishingRodActor::StartReel()
 {
     UE_LOG(LogTemp, Warning, TEXT("いり"));
@@ -208,7 +212,11 @@ void AFishingRodActor::StopReel()
 
     return;
 }
+//////////////////////////////////////////////////////////////////////////
 
+
+//////////////////////////////////////////////////////////////////////////
+// ゲージバトルの処理
 void AFishingRodActor::ReelProgress(float DeltaTime)
 {
     if (!bIsFishBattle) return;
@@ -238,7 +246,7 @@ void AFishingRodActor::ReelProgress(float DeltaTime)
     FishGauge = FMath::Clamp(FishGauge, 0.0f, GaugeMax);
 
     // UIの更新 (実装が必要な関数)
-    UpdateBattleGaugeUI(PlayerGauge, GaugeMax);
+    //UpdateBattleGaugeUI(PlayerGauge, GaugeMax);
 
     //終了判定
     CheckFishBattleState();
@@ -262,37 +270,41 @@ void AFishingRodActor::Tick(float DeltaTime)
     float Distance = FVector::Distance(RodTip, LurePos);
 
     // --- 🧭 リール処理 ---
-    if (bIsReeling)
+    if (bIsReeling && CurrentLure)
     {
-        if (Distance > 5.f) // 近づきすぎで跳ねないように閾値を低く
+        // 1. 常に「今この瞬間」の竿先位置を取る
+        FVector CurrentRodTip = RodMesh->GetSocketLocation(TEXT("RodTip"));
+        LurePos = CurrentLure->GetActorLocation();
+
+        Distance = FVector::Distance(CurrentRodTip, LurePos);
+
+        if (Distance > 30.f) // 閾値を少し広げて確実に判定させる
         {
-            float ReelSpeed = FMath::Clamp(Distance * 2.f, 300.f, 1200.f);
-            FVector NewPos = FMath::VInterpTo(LurePos, RodTip, DeltaTime, ReelSpeed / FMath::Max(Distance, 1.f));
-            if (IsValid(CurrentLure))
-            {
-                CurrentLure->SetActorLocation(NewPos);
-            }
+            // 2. 移動速度を「距離に依存させすぎない」ようにして、最後まできっちり動かす
+            float InterpolationSpeed = 15.0f; // 一定の速度で吸い寄せる
+            FVector NewPos = FMath::VInterpTo(LurePos, CurrentRodTip, DeltaTime, InterpolationSpeed);
+
+            CurrentLure->SetActorLocation(NewPos);
         }
         else
         {
-            if (IsValid(CurrentLure))
-            {
-                CurrentLure->SetActorLocation(RodTip);
-            }
-          
+            // 3. 竿先に届いたら、余計な移動計算をせず「即座に削除」
+            UE_LOG(LogTemp, Warning, TEXT("Lure reached RodTip. Resetting."));
 
-            if (bIsFishBiting && IsValid(CaughtFish))
+            // プレイヤー側で使っている削除処理をここで実行
+            ResetLure();
+
+            if (CaughtFish)
             {
-                OnFishCaught(); // 🎣 魚を釣り上げる処理
-            }
-           
-            if (IsValid(CurrentLure))
-            {
-                CurrentLure->SetBeingReeled(false, RodTip);
+                CaughtFish->Destroy();
+                CaughtFish = nullptr;
             }
 
-            //リールフラグをオフ
+            //状態リセット
+            ResetRodState();
+
             bIsReeling = false;
+            bIsFishBiting = false;
         }
     }
 
@@ -428,9 +440,12 @@ void AFishingRodActor::OnReelClick()
     FishGauge += FishGaugeIncreasePerClick;
     FishGauge = FMath::Clamp(FishGauge, 0.f, GaugeMax);
 
-    CheckFishBattleState();
+CheckFishBattleState();
 }
+//////////////////////////////////////////////////////////////////////////
 
+//////////////////////////////////////////////////////////////////////////
+//　勝利と失敗の条件処理
 void AFishingRodActor::CheckFishBattleState()
 {
     if (!bIsFishBattle || bHasCalledEndBattle) return;
@@ -466,11 +481,6 @@ void AFishingRodActor::CheckFishBattleState()
     }
 }
 
-void AFishingRodActor::UpdateBattleGaugeUI(float CurrentValue, float MaxValue)
-{
-    // デバッグログで値を確認する (一時的な処理)
-    //UE_LOG(LogTemp, Log, TEXT("UI Update: Gauge = %.2f / %.2f"), CurrentValue, MaxValue);
-}
 
 void AFishingRodActor::EndFishBattle(bool bSuccess)
 {
@@ -487,7 +497,7 @@ void AFishingRodActor::EndFishBattle(bool bSuccess)
             // 魚は OnFishCaught で処理されるため、ルアーだけリールアップ
             bIsReeling = true;
             StartReel();
-           
+
         }
     }
     else
@@ -506,6 +516,14 @@ void AFishingRodActor::EndFishBattle(bool bSuccess)
         }
     }
     bIsFishBattle = false;
+
+    if (AMyCharacter* MyChar = Cast<AMyCharacter>(GetOwner()))
+    {
+        if (UAnimInstance* AnimInst = MyChar->GetMesh()->GetAnimInstance())
+        {
+            AnimInst->Montage_Stop(0.25f, MyChar->FishHitMontage);
+        }
+    }
 
     // ゲージリセット（任意）
     PlayerGauge = 0.f;
