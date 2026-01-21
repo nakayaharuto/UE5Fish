@@ -4,6 +4,8 @@
 #include "FishAlbumSlot.h"
 #include "Components/Button.h"
 #include "Components/TextBlock.h"
+#include "FishDetailWindow.h" // 詳細画面のクラス
+#include "GameInstance/MyGameInstance.h" // データ検索用
 #include "Components/Image.h"
 
 void UFishAlbumSlot::NativeConstruct()
