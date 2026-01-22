@@ -22,4 +22,12 @@ public:
 
     UFUNCTION(BlueprintCallable, Category = "Collection")
     void InitializeAlbumFromTable(UDataTable* FishTable);
+    
+    //魚の名前からデータテーブルの詳細情報を取得する関数
+    FFishingFishData* FindFishDataInTable(FString Fishing);
+
+    //
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Fishing")
+    UDataTable* FishDataTable;
+
 };

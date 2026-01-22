@@ -46,3 +46,25 @@ void UMyGameInstance::InitializeAlbumFromTable(UDataTable* FishTable)
         }
     }
 }
+
+FFishingFishData* UMyGameInstance::FindFishDataInTable(FString FishName)
+{
+    if (!FishDataTable)
+    {
+        UE_LOG(LogTemp, Error, TEXT("FishDataTable is NOT set in MyGameInstance!"));
+        return nullptr;
+    }
+    //データテーブルの全行を取得
+    TArray<FFishingFishData*> AllRows;
+    FishDataTable->GetAllRows<FFishingFishData>(TEXT("Searching Fish"), AllRows);
+
+    //名前が一致するものを探す
+    for (FFishingFishData* Row : AllRows)
+    {
+        if (Row && Row->FishName == FishName)
+        {
+            return Row;
+        }
+    }
+    return nullptr;
+}

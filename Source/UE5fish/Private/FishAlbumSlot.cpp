@@ -19,10 +19,14 @@ void UFishAlbumSlot::NativeConstruct()
 
 void UFishAlbumSlot::OnSetFishData(FString Name, int32 CaughtCount, float MaxSize, UTexture2D* Icon)
 {
+    //メンバ関数
+    MyFishName = Name;
+    CurrentCaughtCount =CaughtCount;
+    CurrentMaxSize = MaxSize;
+    CurrentIcon = Icon;
+
     // 1. 釣ったことがあるか判定
     bool bIsDiscovered = (CaughtCount > 0);
-
-    MyFishName = Name;
 
     // 2. 名前の表示設定
     if (Text_FishName)
@@ -67,6 +71,55 @@ void UFishAlbumSlot::OnSetFishData(FString Name, int32 CaughtCount, float MaxSiz
 
 void UFishAlbumSlot::InternalOnClicked()
 {
-    // クリックされたら、自分の魚の名前を飛ばす
-    OnSlotClicked.Broadcast(MyFishName);
+
+    UE_LOG(LogTemp, Warning, TEXT("Slot Clicked: %s"), *MyFishName);
+
+    if (!DetailWindowClass)
+    {
+        UE_LOG(LogTemp, Error, TEXT("ERROR: DetailWindowClass is NULL!"));
+        return;
+    }
+
+    UFishDetailWindow* DetailWin = CreateWidget<UFishDetailWindow>(GetWorld(), DetailWindowClass);
+
+    if (!DetailWin)
+    {
+        UE_LOG(LogTemp, Error, TEXT("ERROR: CreateWidget FAILED!"));
+        return;
+    }
+
+    UE_LOG(LogTemp, Warning, TEXT("2. Widget Created Successfully"));
+    // 釣っていない魚は詳細を開けないようにする
+    //if (CurrentCaughtCount <= 0) return;
+
+    UMyGameInstance* GI = Cast<UMyGameInstance>(GetGameInstance());
+    if (GI)
+    {
+        // データテーブルから検索
+        FFishingFishData* TableData = GI->FindFishDataInTable(MyFishName);
+
+        if (TableData)
+        {
+            UE_LOG(LogTemp, Warning, TEXT("3. Table Data Found!"));
+            DetailWin->SetDetailData(
+                MyFishName,
+                TableData->FishDescription,
+                CurrentIcon,
+                CurrentMaxSize,
+                CurrentCaughtCount
+            );
+        }
+        else
+        {
+            // ★ データが見つからない場合の警告
+            UE_LOG(LogTemp, Error, TEXT("3. ERROR: Table Data NOT FOUND for [%s]! Check RowName in DataTable."), *MyFishName);
+
+            // テスト用：解説が空でも名前だけ入れて表示を試みる
+            //DetailWin->SetDetailData(MyFishName, FText::FromString(TEXT("解説が見つかりません")), CurrentIcon, CurrentMaxSize, CurrentCaughtCount);
+        }
+
+        // 5. 最後に画面へ追加（if(TableData)の外に出しました）
+        DetailWin->AddToViewport(999);
+        UE_LOG(LogTemp, Warning, TEXT("4. AddToViewport Executed!"));
+    }
 }

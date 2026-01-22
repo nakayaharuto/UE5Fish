@@ -52,5 +52,8 @@ protected:
 
     // “à•”•Û—p
     FString MyFishName;
+    UTexture2D* CurrentIcon;
+    float CurrentMaxSize;
+    int32 CurrentCaughtCount;
 
 };
