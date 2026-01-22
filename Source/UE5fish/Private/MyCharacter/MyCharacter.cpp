@@ -160,8 +160,15 @@ void AMyCharacter::Move(const FInputActionValue& Value)
 void AMyCharacter::Look(const FInputActionValue& Value)
 {
 	const FVector2D LookAxisVector = Value.Get<FVector2D>();
-	AddControllerYawInput(LookAxisVector.X);
-	AddControllerPitchInput(LookAxisVector.Y);
+
+	//釣り中は左右の回転禁止
+	if (!bIsFishing)
+	{
+		AddControllerYawInput(LookAxisVector.X * 0.3f);
+	}
+
+	AddControllerYawInput(LookAxisVector.X * .3f);
+	AddControllerPitchInput(LookAxisVector.Y * .3f);
 }
 //////////////////////////////////////////////////////////////////////////
 // インベントリ関連
@@ -252,9 +259,33 @@ void AMyCharacter::ToggleEquipRod(const FInputActionValue& Value)
 	ToggleFishingRod(bRodEquipped);
 }
 
+//釣り竿を構えた時
 void AMyCharacter::ToggleFishingRod(bool bEquip)
 {
 	bIsFishing = !bIsFishing;
+
+	if (APlayerController* PC = Cast<APlayerController>(GetController()))
+	{
+		if (PC->PlayerCameraManager)
+		{
+			if (bRodEquipped)
+			{
+				//釣り竿を構えた時の角度範囲
+				PC->PlayerCameraManager->ViewPitchMin = -30.0f;
+				PC->PlayerCameraManager->ViewPitchMax = 10.0f;
+				PC->PlayerCameraManager->ViewRollMin = -40.0f;
+				PC->PlayerCameraManager->ViewRollMax = 20.0f;
+			}
+			else
+			{
+				//通常時のカメラ角度範囲
+				PC->PlayerCameraManager->ViewPitchMin = -89.0f;
+				PC->PlayerCameraManager->ViewPitchMax = 89.0f;
+			}
+		}
+	}
+	//-------------------------
+
 	if (FishingRod)
 	{
 		FishingRod->bEquipped = bEquip; // 竿アクターのbEquippedを更新

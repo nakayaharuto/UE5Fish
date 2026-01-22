@@ -22,6 +22,9 @@ public:
     //図鑑を開いた時の処理
     void RefreshAlbum(UUserWidget* AlbumUI);
 
+    // スロットから呼ばれる入り口
+    void ShowFishDetail(FString Name, int32 Count, float Size, UTexture2D* Icon);
+
 protected:
     UPROPERTY(EditAnywhere, Category = "UI")
     TSubclassOf<class UUserWidget> AlbumWidgetClass;
@@ -29,6 +32,8 @@ protected:
     UPROPERTY(EditAnywhere, Category = "UI")
     TSubclassOf<class UUserWidget> SlotWidgetClass;
 
+    UPROPERTY(EditAnywhere, Category = "UI")
+    TSubclassOf<class UFishDetailWindow> DetailWindowClass;
 
     UPROPERTY()
     class UUserWidget* AlbumWidget;

@@ -17,7 +17,6 @@ void AFishingHUD::ToggleFishAlbum()
 
     if (!AlbumWidget)
     {
-        UE_LOG(LogTemp, Warning, TEXT("Creating Widget..."));
         AlbumWidget = CreateWidget<UUserWidget>(GetWorld(), AlbumWidgetClass);
     }
 
@@ -85,5 +84,23 @@ void AFishingHUD::RefreshAlbum(UUserWidget* AlbumUI)
             NewSlot->OnSetFishData(Elem.Key, Elem.Value.TimesCaught, Elem.Value.MaxSize, Elem.Value.FishIcon);
             FishList->AddChild(NewSlot);
         }
+    }
+}
+
+void AFishingHUD::ShowFishDetail(FString Name, int32 Count, float Size, UTexture2D* Icon)
+{
+    if (!DetailWindowClass) return;
+
+    // ‚±‚±‚Å1‰ñ‚¾‚¯¶¬‚µ‚ÄViewport‚Éo‚·
+    UFishDetailWindow* DetailWin = CreateWidget<UFishDetailWindow>(GetWorld(), DetailWindowClass);
+    if (DetailWin)
+    {
+        UMyGameInstance* GI = Cast<UMyGameInstance>(GetGameInstance());
+        FFishingFishData* TableData = (GI) ? GI->FindFishDataInTable(Name) : nullptr;
+
+        FText Desc = (TableData) ? TableData->FishDescription : FText::FromString(TEXT("à–¾‚È‚µ"));
+
+        DetailWin->SetDetailData(Name, Desc, Icon, Size, Count);
+        DetailWin->AddToViewport(100); // d‚È‚è‡‚ğ‚‚­İ’è
     }
 }

@@ -24,10 +24,6 @@ public:
     UPROPERTY(BlueprintAssignable, Category = "Events")
     FOnFishSlotClicked OnSlotClicked;
 
-    // 詳細画面のクラス（WBP_FishDetailWindow）をセットするための変数
-    UPROPERTY(EditAnywhere, Category = "UI")
-    TSubclassOf<class UFishDetailWindow> DetailWindowClass;
-
 protected:
     // meta = (BindWidget) をつけると、BP側の同名のウィジェットと自動で紐付きます
     UPROPERTY(meta = (BindWidget))
