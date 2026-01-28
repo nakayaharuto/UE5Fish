@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "FishDetailWindow.h"
@@ -25,8 +25,19 @@ void UFishDetailWindow::SetDetailData(FString Name, FText Description, UTexture2
 
     if (Text_Size)
     {
-        FString SizeString = FString::Printf(TEXT(" % .1f cm\n(: % .1f - % .1f cm)"),Record, MinSize, MaxSize);
-        Text_Size->SetText(FText::FromString(SizeString));
+        FNumberFormattingOptions Options;
+        Options.MinimumFractionalDigits = 1; // 最小小数点桁数
+        Options.MaximumFractionalDigits = 1; // 最大小数点桁数
+
+        // FText::Format を使用（これなら日本語も数値も安全に合体できます）
+        FFormatNamedArguments Args;
+        Args.Add(TEXT("Rec"), FText::AsNumber(Record, &Options));
+        Args.Add(TEXT("Min"), FText::AsNumber(MinSize, &Options));
+        Args.Add(TEXT("Max"), FText::AsNumber(MaxSize, &Options));
+
+        FText SizeFormat = FText::Format(FText::FromString(TEXT("{Rec} cm\n(標準: {Min} - {Max} cm)")), Args);
+
+        Text_Size->SetText(SizeFormat);
     }
 
     if (Text_Description)
@@ -39,12 +50,12 @@ void UFishDetailWindow::SetDetailData(FString Name, FText Description, UTexture2
         Image_FishIcon->SetBrushFromTexture(Icon);
     }
 
-    // �K�v�ɉ����čő�T�C�Y��ނ����񐔂��\��
-    // ��: FString::Printf(TEXT("�L�^: %.1f cm / �ނ�����: %d ��"), MaxSize, Count);
+    // 必要に応じて最大サイズや釣った回数も表示
+    // 例: FString::Printf(TEXT("記録: %.1f cm / 釣った回数: %d 回"), MaxSize, Count);
 }
 
 void UFishDetailWindow::OnBackClicked()
 {
-    // �ڍ׉�ʂ����i��������������j
+    // 詳細画面を閉じる（自分を消去する）
     RemoveFromParent();
 }

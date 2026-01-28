@@ -19,10 +19,12 @@ void UFishAlbumSlot::NativeConstruct()
 
 void UFishAlbumSlot::OnSetFishData(FString Name, int32 CaughtCount, float Record,float InMin,float InMax, UTexture2D* Icon)
 {
+    UE_LOG(LogTemp, Warning, TEXT("Slot Debug: Fish=%s, Record=%f"), *Name, Record);
+
     //メンバ関数
     MyFishName = Name;
     CurrentCaughtCount =CaughtCount;
-    CurrentMaxSize = MaxSize;
+    CurrentMaxSize = Record;
     CurrentIcon = Icon;
 
     MinSize = InMin;
@@ -48,7 +50,7 @@ void UFishAlbumSlot::OnSetFishData(FString Name, int32 CaughtCount, float Record
     if (Text_MaxSize)
     {
         // 未発見ならサイズも伏せる
-        FString SizeString = (CaughtCount > 0) ? FString::Printf(TEXT("%.1f cm"), MaxSize) : TEXT("--- cm");
+        FString SizeString = (CaughtCount > 0) ? FString::Printf(TEXT("%.1f cm"), Record) : TEXT("--- cm");
         Text_MaxSize->SetText(FText::FromString(SizeString));
     }
 
