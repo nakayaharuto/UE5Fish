@@ -78,16 +78,21 @@ void AFishingHUD::RefreshAlbum(UUserWidget* AlbumUI)
         // ★重要：ここがログに出るか確認
         //UE_LOG(LogTemp, Warning, TEXT("HUD: Creating Slot for %s"), *Elem.Key);
 
+        FFishingFishData* TableData = GI->FindFishDataInTable(Elem.Key);
+
+        float TableMin = TableData ? TableData->MinSize : 0.0f;
+        float TableMax = TableData ? TableData->MaxSize : 0.0f;
+
         UFishAlbumSlot* NewSlot = CreateWidget<UFishAlbumSlot>(GetWorld(), SlotWidgetClass);
         if (NewSlot)
         {
-            NewSlot->OnSetFishData(Elem.Key, Elem.Value.TimesCaught, Elem.Value.MaxSize, Elem.Value.FishIcon);
+            NewSlot->OnSetFishData(Elem.Key, Elem.Value.TimesCaught, Elem.Value.MaxSize, TableMin,TableMax,Elem.Value.FishIcon);
             FishList->AddChild(NewSlot);
         }
     }
 }
 
-void AFishingHUD::ShowFishDetail(FString Name, int32 Count, float Size, UTexture2D* Icon)
+void AFishingHUD::ShowFishDetail(FString Name, int32 Count, float Size, float MinSize,float MaxSize,UTexture2D* Icon)
 {
     if (!DetailWindowClass) return;
 
@@ -100,7 +105,7 @@ void AFishingHUD::ShowFishDetail(FString Name, int32 Count, float Size, UTexture
 
         FText Desc = (TableData) ? TableData->FishDescription : FText::FromString(TEXT("説明なし"));
 
-        DetailWin->SetDetailData(Name, Desc, Icon, Size, Count);
+        DetailWin->SetDetailData(Name, Desc, Icon, Size, MinSize, MaxSize, Count);
         DetailWin->AddToViewport(100); // 重なり順を高く設定
     }
 }

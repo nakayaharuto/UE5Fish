@@ -16,12 +16,15 @@ class UE5FISH_API UFishDetailWindow : public UUserWidget
 public:
 
 	//表示データを流し込む関数
-	void SetDetailData(FString Name, FText Description, UTexture2D* Icon, float MaxSize, int32 Count);
+	void SetDetailData(FString Name, FText Description, UTexture2D* Icon,float Record,float MinSize, float MaxSize, int32 Count);
 
 protected:
 
     UPROPERTY(meta = (BindWidget))
     class UTextBlock* Text_FishName;
+
+    UPROPERTY(meta = (BindWidget))
+    class UTextBlock* Text_Size;
 
     UPROPERTY(meta = (BindWidget))
     class UTextBlock* Text_Description;

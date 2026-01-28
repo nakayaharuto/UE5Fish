@@ -16,11 +16,17 @@ void UFishDetailWindow::NativeConstruct()
     }
 }
 
-void UFishDetailWindow::SetDetailData(FString Name, FText Description, UTexture2D* Icon, float MaxSize, int32 Count)
+void UFishDetailWindow::SetDetailData(FString Name, FText Description, UTexture2D* Icon, float Record,float MinSize ,float MaxSize, int32 Count)
 {
     if (Text_FishName)
     {
         Text_FishName->SetText(FText::FromString(Name));
+    }
+
+    if (Text_Size)
+    {
+        FString SizeString = FString::Printf(TEXT(" % .1f cm\n(: % .1f - % .1f cm)"),Record, MinSize, MaxSize);
+        Text_Size->SetText(FText::FromString(SizeString));
     }
 
     if (Text_Description)

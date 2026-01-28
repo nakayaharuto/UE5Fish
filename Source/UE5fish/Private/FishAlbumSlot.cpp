@@ -17,7 +17,7 @@ void UFishAlbumSlot::NativeConstruct()
     }
 }
 
-void UFishAlbumSlot::OnSetFishData(FString Name, int32 CaughtCount, float MaxSize, UTexture2D* Icon)
+void UFishAlbumSlot::OnSetFishData(FString Name, int32 CaughtCount, float Record,float InMin,float InMax, UTexture2D* Icon)
 {
     //メンバ関数
     MyFishName = Name;
@@ -25,6 +25,8 @@ void UFishAlbumSlot::OnSetFishData(FString Name, int32 CaughtCount, float MaxSiz
     CurrentMaxSize = MaxSize;
     CurrentIcon = Icon;
 
+    MinSize = InMin;
+    MaxSize = InMax;
     // 1. 釣ったことがあるか判定
     bool bIsDiscovered = (CaughtCount > 0);
 
@@ -79,6 +81,6 @@ void UFishAlbumSlot::InternalOnClicked()
     if (HUD)
     {
         // HUDに「この魚の詳細を出して！」と丸投げする
-        HUD->ShowFishDetail(MyFishName, CurrentCaughtCount, CurrentMaxSize, CurrentIcon);
+        HUD->ShowFishDetail(MyFishName, CurrentCaughtCount, CurrentMaxSize,MinSize,MaxSize,CurrentIcon);
     }
 }

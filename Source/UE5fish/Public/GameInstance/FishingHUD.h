@@ -23,7 +23,7 @@ public:
     void RefreshAlbum(UUserWidget* AlbumUI);
 
     // ƒXƒƒbƒg‚©‚çŒÄ‚Î‚ê‚é“ü‚èŒû
-    void ShowFishDetail(FString Name, int32 Count, float Size, UTexture2D* Icon);
+    void ShowFishDetail(FString Name, int32 Count, float Size, float MinSize, float MaxSize, UTexture2D* Icon);
 
 protected:
     UPROPERTY(EditAnywhere, Category = "UI")

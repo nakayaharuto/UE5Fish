@@ -18,7 +18,7 @@ class UE5FISH_API UFishAlbumSlot : public UUserWidget
 public:
 	// BP側のテキストや画像にデータを流し込む関数
 	UFUNCTION(BlueprintCallable, Category = "UI")
-    void OnSetFishData(FString Name, int32 CaughtCount, float MaxSize, UTexture2D* Icon);
+    void OnSetFishData(FString Name, int32 CaughtCount, float Record, float InMin, float InMax, UTexture2D* Icon);
 
     //クリックイベント
     UPROPERTY(BlueprintAssignable, Category = "Events")
@@ -51,5 +51,7 @@ protected:
     UTexture2D* CurrentIcon;
     float CurrentMaxSize;
     int32 CurrentCaughtCount;
+    float MinSize = 0.0f; 
+    float MaxSize = 0.0f; 
 
 };
