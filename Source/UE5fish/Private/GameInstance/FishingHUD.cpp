@@ -3,6 +3,10 @@
 #include "GameInstance/FishingHUD.h"
 #include "Blueprint/UserWidget.h"
 #include "Components/ScrollBox.h"
+#include "Kismet/GameplayStatics.h"
+#include "Components/AudioComponent.h"    // UAudioComponentの操作に必要
+#include "Sound/SoundBase.h"              // USoundBaseの定義に必要
+#include "TimerManager.h"                 // FTimerHandleやタイマー管理に必要
 #include "FishAlbumSlot.h"
 #include "GameFramework/PlayerController.h" // GetOwningPlayerController用
 #include "GameInstance/MyGameInstance.h" // GameInstanceのデータにアクセスする場合
@@ -107,5 +111,44 @@ void AFishingHUD::ShowFishDetail(FString Name, int32 Count, float Size, float Mi
 
         DetailWin->SetDetailData(Name, Desc, Icon, Size, MinSize, MaxSize, Count);
         DetailWin->AddToViewport(100); // 重なり順を高く設定
+    }
+}
+
+//===========BGM==========
+void AFishingHUD::PlayBGM(USoundBase* NewSound, bool bLoop)
+{
+    if (MainBGMComponent)
+    {
+        MainBGMComponent->Stop();
+    }
+
+    if (NewSound)
+    {
+        MainBGMComponent = UGameplayStatics::SpawnSound2D(this, NewSound);
+    }
+}
+
+void AFishingHUD::UpdateFishingAudio(FString State)
+{
+    if (State == "Normal")
+    {
+        PlayBGM(MainBGM, true);
+    }
+    else if (State == "Hit")
+    {
+        PlayBGM(FishingBGM, true);
+    }
+    else if (State == "Success") {
+        PlayBGM(nullptr, false); // BGM停止
+        UGameplayStatics::PlaySound2D(this, SuccessSFX);
+        // 3秒後にNormalに戻す（簡易版）
+        FTimerHandle TimerHandle;
+        GetWorldTimerManager().SetTimer(TimerHandle, [this]() { UpdateFishingAudio("Normal"); }, 3.0f, false);
+    }
+    else if (State == "Fail") {
+        PlayBGM(nullptr, false);
+        UGameplayStatics::PlaySound2D(this, FailSFX);
+        FTimerHandle TimerHandle;
+        GetWorldTimerManager().SetTimer(TimerHandle, [this]() { UpdateFishingAudio("Normal"); }, 3.0f, false);
     }
 }

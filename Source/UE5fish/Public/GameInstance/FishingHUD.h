@@ -25,6 +25,14 @@ public:
     // スロットから呼ばれる入り口
     void ShowFishDetail(FString Name, int32 Count, float Size, float MinSize, float MaxSize, UTexture2D* Icon);
 
+    //外部から呼ぶための音楽切り替え関数
+    void UpdateFishingAudio(FString State);
+
+
+private:
+    void PlayBGM(USoundBase* NewSound, bool bLoop);
+
+
 protected:
     UPROPERTY(EditAnywhere, Category = "UI")
     TSubclassOf<class UUserWidget> AlbumWidgetClass;
@@ -37,4 +45,20 @@ protected:
 
     UPROPERTY()
     class UUserWidget* AlbumWidget;
+
+    //===========BGM管理用========
+    UPROPERTY()
+    UAudioComponent* MainBGMComponent;
+
+    UPROPERTY(EditAnywhere, Category = "Audio")
+    USoundBase* MainBGM;
+
+    UPROPERTY(EditAnywhere, Category = "Audio")
+    USoundBase* FishingBGM;
+
+    UPROPERTY(EditAnywhere, Category = "Audio")
+    USoundBase* SuccessSFX;
+
+    UPROPERTY(EditAnywhere, Category = "Audio")
+    USoundBase* FailSFX;
 };

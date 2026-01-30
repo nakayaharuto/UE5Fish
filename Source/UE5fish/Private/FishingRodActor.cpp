@@ -7,6 +7,7 @@
 #include "Engine/EngineTypes.h"
 #include "Engine/DataTable.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "GameInstance/FishingHUD.h" // HUDへのアクセス
 #include "Kismet/GameplayStatics.h"
 
 AFishingRodActor::AFishingRodActor()
@@ -98,6 +99,15 @@ void AFishingRodActor::ResetRodState()
 
     // 竿を表示状態に（必要であれば）
     SetActorHiddenInGame(false);
+
+    // 音楽を通常に戻す
+    if (APlayerController* PC = GetWorld()->GetFirstPlayerController())
+    {
+        if (AFishingHUD* HUD = Cast<AFishingHUD>(PC->GetHUD()))
+        {
+            HUD->UpdateFishingAudio(TEXT("Normal"));
+        }
+    }
 }
 
 void AFishingRodActor::SpawnLure()
@@ -388,6 +398,16 @@ void AFishingRodActor::OnFishHitEvent()
 {
     UE_LOG(LogTemp, Warning, TEXT("Rod: HIT 受信"));
 
+    //オーディオ切り替え
+    if (APlayerController* PC = GetWorld()->GetFirstPlayerController())
+    {
+        if (AFishingHUD* HUD = Cast<AFishingHUD>(PC->GetHUD()))
+        {
+            HUD->UpdateFishingAudio(TEXT("Hit"));
+        }
+    }
+
+
     //プレイヤーのアニメーション
     if (AMyCharacter* MyChar = Cast<AMyCharacter>(GetOwner()))
     {
@@ -453,7 +473,7 @@ void AFishingRodActor::CheckFishBattleState()
     // 敗北判定 2: プレイヤーゲージが MAX になった（ラインブレイク）
     if (PlayerGauge >= GaugeMax)
     {
-        UE_LOG(LogTemp, Error, TEXT("LINE BREAK! EndBattle(false) called."));
+        //UE_LOG(LogTemp, Error, TEXT("LINE BREAK! EndBattle(false) called."));
         EndFishBattle(false);
         return;
     }
@@ -461,6 +481,7 @@ void AFishingRodActor::CheckFishBattleState()
     // 勝利判定: 魚ゲージが MAX になった（リールを巻ききった！）
     if (FishGauge >= GaugeMax)
     {
+         
         EndFishBattle(true);
         return;
     }
@@ -475,7 +496,7 @@ void AFishingRodActor::CheckFishBattleState()
     // 敗北判定 3:魚ゲージが 0 になった（魚に逃げられた）
     if (FishGauge <= 0.0f)
     {
-        UE_LOG(LogTemp, Warning, TEXT("FISH GAUGE ZERO! EndBattle(false) called (Fish escaped)."));
+        //UE_LOG(LogTemp, Warning, TEXT("FISH GAUGE ZERO! EndBattle(false) called (Fish escaped)."));
         EndFishBattle(false);
         return;
     }
@@ -486,6 +507,22 @@ void AFishingRodActor::EndFishBattle(bool bSuccess)
 {
     if (bHasCalledEndBattle) return;
     bHasCalledEndBattle = true;
+
+    // --- オーディオ切り替え ---
+    if (APlayerController* PC = GetWorld()->GetFirstPlayerController())
+    {
+        if (AFishingHUD* HUD = Cast<AFishingHUD>(PC->GetHUD()))
+        {
+            if (bSuccess)
+            {
+                HUD->UpdateFishingAudio(TEXT("Success"));
+            }
+            else
+            {
+                HUD->UpdateFishingAudio(TEXT("Fail"));
+            }
+        }
+    }
 
     bIsPlayerReeling = false;
 
