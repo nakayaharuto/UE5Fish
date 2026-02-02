@@ -253,8 +253,17 @@ void AMyCharacter::Tick(float DeltaTime)
 	}
 }
 
+//釣り竿を装備する
 void AMyCharacter::ToggleEquipRod(const FInputActionValue& Value)
 {
+	//エリア外なら装備できない
+	if (!bIsInFishingArea && !bRodEquipped)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("ここはエリア外"));
+		return;
+	}
+
+
 	bRodEquipped = !bRodEquipped;
 	ToggleFishingRod(bRodEquipped);
 }
@@ -332,6 +341,13 @@ void AMyCharacter::ToggleFishingRod(bool bEquip)
 void AMyCharacter::StartCastingInput(const FInputActionValue& Value)
 {
 	if (!bIsFishing) return;
+
+	//竿の状態を確認し、[投げている]なら入力無視
+	if (FishingRod && (FishingRod->bIsCasting || FishingRod->bIsFishBattle || FishingRod->bIsReeling))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("現在操作中です..."));
+		return;
+	}
 
 	bHasProcessedCatch = false;
 

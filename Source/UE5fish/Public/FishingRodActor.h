@@ -158,10 +158,12 @@ public:
     UPROPERTY()
     bool bHasCalledEndBattle = false;
 
-protected:
-    // --- 内部状態管理フラグ（重要：バトルの挙動を制御） ---
+    //--　状態フラグ(外部からの操作可)---
     bool bIsCasting = false;
     bool bIsReeling = false;
+
+protected:
+    // --- 内部状態管理フラグ（重要：バトルの挙動を制御） ---
     bool bIsFishBiting = false;
     bool bFishCaught = false;
     bool bIsCharging = false;

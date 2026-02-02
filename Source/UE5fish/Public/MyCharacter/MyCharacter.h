@@ -173,6 +173,9 @@ protected:
 
 	/** ó‘Ô‚ª’·‰Ÿ‚µ‚© */
 	bool bIsReelPressed = false;
+	/** ƒGƒŠƒA“à‚© */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Fishing")
+	bool bIsInFishingArea = false;
 
 public:	
 	bool bIsReelingFish = false;
