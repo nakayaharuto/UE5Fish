@@ -256,13 +256,23 @@ void AMyCharacter::Tick(float DeltaTime)
 //釣り竿を装備する
 void AMyCharacter::ToggleEquipRod(const FInputActionValue& Value)
 {
+	
+	if (FishingRod)
+	{
+		// キャスト中、バトル中、リール巻き中はいかなる場合も竿を操作させない
+		if (FishingRod->bIsCasting || FishingRod->bIsFishBattle || FishingRod->bIsReeling)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("アクション中は竿を操作できません"));
+			return;
+		}
+	}
+
 	//エリア外なら装備できない
 	if (!bIsInFishingArea && !bRodEquipped)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("ここはエリア外"));
 		return;
 	}
-
 
 	bRodEquipped = !bRodEquipped;
 	ToggleFishingRod(bRodEquipped);

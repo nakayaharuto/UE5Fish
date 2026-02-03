@@ -562,6 +562,11 @@ void AFishingRodActor::EndFishBattle(bool bSuccess)
         }
     }
 
+    if (bSuccess)
+    {
+        TotalCaughtCount++; // 釣れた数をカウントアップ！
+    }
+
     // ゲージリセット（任意）
     PlayerGauge = 0.f;
     FishGauge = 0.f;
@@ -584,7 +589,6 @@ void AFishingRodActor::OnFishCaught()
 
 void AFishingRodActor::SpawnFish()
 {
-    // データテーブルとスポーン対象クラスの基本的なチェック
     if (!FishDataTable || !FishClass) return;
 
     TArray<FFishingFishData*> AllRows;
@@ -592,36 +596,45 @@ void AFishingRodActor::SpawnFish()
 
     if (AllRows.Num() == 0) return;
 
-    // --- 確率の「重み」を計算 ---
-    float TotalWeight = 0.0f;
-    TArray<float> RowWeights;
-
-    for (FFishingFishData* Row : AllRows)
-    {
-        // レア度が高いほど重みを小さくする計算式
-        // 例: レア1=100.0, レア2=20.0, レア3=4.0 ... 
-        float Weight = 100.0f / FMath::Max(1.0f, FMath::Pow(5.0f, (float)(Row->Rarity - 1)));
-        RowWeights.Add(Weight);
-        TotalWeight += Weight;
-    }
-
-    // --- 抽選実行 ---
-    float RandomPoint = FMath::FRandRange(0.0f, TotalWeight);
-    float CurrentWeightSum = 0.0f;
     FFishingFishData* SelectedFishData = nullptr;
 
-    for (int32 i = 0; i < AllRows.Num(); i++)
+    for (int32 Retry = 0; Retry < 3; Retry++)
     {
-        CurrentWeightSum += RowWeights[i];
-        if (RandomPoint <= CurrentWeightSum)
+        int32 TargetRarity = 1;
+        float RarityRoll = FMath::FRandRange(0.0f, 100.0f);
+        if (TotalCaughtCount < 3)      TargetRarity = (RarityRoll < 20.0f) ? 2 : 1;
+        else if (TotalCaughtCount < 10) TargetRarity = (RarityRoll < 10.0f ? 3 : (RarityRoll < 50.0f ? 2 : 1));
+        else                            TargetRarity = (RarityRoll < 10.0f ? 4 : (RarityRoll < 30.0f ? 3 : (RarityRoll < 70.0f ? 2 : 1)));
+
+        //抽出
+        TArray<FFishingFishData*> CandidateFish;
+        for (FFishingFishData* Row : AllRows)
         {
-            SelectedFishData = AllRows[i];
-            break;
+            if (Row->Rarity == TargetRarity) CandidateFish.Add(Row);
         }
+
+        //セーフティ：候補がいなければ全レアリティから
+        if (CandidateFish.Num() == 0) CandidateFish = AllRows;
+
+        //暫定の決定
+        SelectedFishData = CandidateFish[FMath::RandRange(0, CandidateFish.Num() - 1)];
+
+        //【クールダウンチェック】直近2匹に含まれていないか？
+        if (!RecentFishNames.Contains(SelectedFishData->FishName))
+        {
+            break; // 履歴にないので確定してループ脱出
+        }
+        // 履歴にあった場合はループし、Retryが増える＝再抽選される
     }
 
     if (SelectedFishData)
     {
+        RecentFishNames.Insert(SelectedFishData->FishName, 0);
+        if (RecentFishNames.Num() > 2)
+        {
+            RecentFishNames.RemoveAt(2);
+        }
+
         // 3. サイズの決定 (MinSizeとMaxSizeの間でランダム)
         float ActualSize = FMath::FRandRange(SelectedFishData->MinSize, SelectedFishData->MaxSize);
 

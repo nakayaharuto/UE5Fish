@@ -169,7 +169,7 @@ protected:
     bool bIsCharging = false;
     bool bIsPlayerReeling = false;
     bool Lure = false;
-
+    int32 TotalCaughtCount = 0; //累計の釣り成功回数
 
     /** リール進行度 */
     float FishReelProgress = 0.f;
@@ -188,6 +188,9 @@ protected:
 
 private:
     FTimerHandle FishBiteTimerHandle;
+
+    //直近釣った魚の情報
+    TArray<FString> RecentFishNames;
 
     void OnFishCaught();        // 巻き上げ完了時
     /** バトル内で勝敗判定 */

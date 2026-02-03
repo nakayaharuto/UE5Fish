@@ -60,9 +60,11 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Fish")
 	int32 Rarity;
 
+	//プレイヤーゲージの自然減少率
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Fish")
 	float PlayerGaugeDecayContribution;
 
+	//解説・フレーバーテキスト
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Fish")
 	FText FishDescription;
 };
