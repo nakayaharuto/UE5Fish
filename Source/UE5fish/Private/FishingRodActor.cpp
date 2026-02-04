@@ -100,14 +100,7 @@ void AFishingRodActor::ResetRodState()
     // 竿を表示状態に（必要であれば）
     SetActorHiddenInGame(false);
 
-    // 音楽を通常に戻す
-    if (APlayerController* PC = GetWorld()->GetFirstPlayerController())
-    {
-        if (AFishingHUD* HUD = Cast<AFishingHUD>(PC->GetHUD()))
-        {
-            HUD->UpdateFishingAudio(TEXT("Normal"));
-        }
-    }
+   
 }
 
 void AFishingRodActor::SpawnLure()

@@ -28,6 +28,10 @@ void AFishingHUD::ToggleFishAlbum()
     {
         if (!AlbumWidget->IsInViewport())
         {
+            // 図鑑を開く
+            AlbumWidget->AddToViewport();
+            UGameplayStatics::PlaySound2D(this, AlbumOpenSFX, 0.5f);
+
             AlbumWidget->AddToViewport();
 
             APlayerController* PC = GetOwningPlayerController();
@@ -42,6 +46,10 @@ void AFishingHUD::ToggleFishAlbum()
         }
         else
         {
+            // 図鑑を閉じる
+            AlbumWidget->RemoveFromParent();
+            UGameplayStatics::PlaySound2D(this, AlbumCloseSFX, 0.4f);
+
             AlbumWidget->RemoveFromParent();
             GetOwningPlayerController()->bShowMouseCursor = false;
             GetOwningPlayerController()->SetInputMode(FInputModeGameOnly());
@@ -53,6 +61,14 @@ void AFishingHUD::ToggleFishAlbum()
         // 図鑑が表示されたら、最新のデータをリストに反映させる
         RefreshAlbum(AlbumWidget);
     }
+}
+
+void AFishingHUD::BeginPlay()
+{
+    Super::BeginPlay();
+
+    // ゲーム開始時に通常のBGMを再生する
+    UpdateFishingAudio(TEXT("Normal"));
 }
 
 //図鑑を開いた時の処理
@@ -104,6 +120,8 @@ void AFishingHUD::ShowFishDetail(FString Name, int32 Count, float Size, float Mi
     UFishDetailWindow* DetailWin = CreateWidget<UFishDetailWindow>(GetWorld(), DetailWindowClass);
     if (DetailWin)
     {
+        UGameplayStatics::PlaySound2D(this, DetailOpenSFX, 0.6f);
+
         UMyGameInstance* GI = Cast<UMyGameInstance>(GetGameInstance());
         FFishingFishData* TableData = (GI) ? GI->FindFishDataInTable(Name) : nullptr;
 
@@ -120,11 +138,17 @@ void AFishingHUD::PlayBGM(USoundBase* NewSound, bool bLoop)
     if (MainBGMComponent)
     {
         MainBGMComponent->Stop();
+        MainBGMComponent = nullptr;
     }
 
     if (NewSound)
     {
         MainBGMComponent = UGameplayStatics::SpawnSound2D(this, NewSound);
+        if (MainBGMComponent)
+        {
+            MainBGMComponent->SetVolumeMultiplier(0.3f);//音量調節
+            MainBGMComponent->bAutoDestroy = true; // 終わったら自動消滅
+        }
     }
 }
 

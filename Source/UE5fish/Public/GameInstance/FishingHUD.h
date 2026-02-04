@@ -28,6 +28,7 @@ public:
     //äOïîÇ©ÇÁåƒÇ‘ÇΩÇﬂÇÃâπäyêÿÇËë÷Ç¶ä÷êî
     void UpdateFishingAudio(FString State);
 
+    virtual void BeginPlay() override;
 
 private:
     void PlayBGM(USoundBase* NewSound, bool bLoop);
@@ -61,4 +62,15 @@ protected:
 
     UPROPERTY(EditAnywhere, Category = "Audio")
     USoundBase* FailSFX;
+
+    UPROPERTY(EditAnywhere,Category = "Audio")
+    USoundBase* AlbumOpenSFX;
+
+    UPROPERTY(EditAnywhere,Category = "Audio")
+    USoundBase* AlbumCloseSFX;
+
+    UPROPERTY(EditAnywhere,Category = "Audio")
+    USoundBase* DetailOpenSFX;
+
+    
 };

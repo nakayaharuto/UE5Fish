@@ -40,4 +40,8 @@ protected:
     UFUNCTION()
     void OnBackClicked();
 
+    //-------SE---------
+    UPROPERTY(EditAnywhere, Category = "Audio")
+    USoundBase* DetailCloseSFX;
+
 };

@@ -4,6 +4,9 @@
 #include "FishDetailWindow.h"
 #include "Components/TextBlock.h"
 #include "Components/Image.h"
+#include "Components/AudioComponent.h"    // UAudioComponentの操作に必要
+#include "Sound/SoundBase.h"              // USoundBaseの定義に必要
+#include "Kismet/GameplayStatics.h"
 #include "Components/Button.h"
 
 void UFishDetailWindow::NativeConstruct()
@@ -56,6 +59,7 @@ void UFishDetailWindow::SetDetailData(FString Name, FText Description, UTexture2
 
 void UFishDetailWindow::OnBackClicked()
 {
+    UGameplayStatics::PlaySound2D(this, DetailCloseSFX, 0.6f);
     // 詳細画面を閉じる（自分を消去する）
     RemoveFromParent();
 }

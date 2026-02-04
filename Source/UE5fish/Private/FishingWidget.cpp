@@ -23,7 +23,7 @@ void UFishingWidget::SetCastMarkerLocation(const FVector& WorldLocation)
     if (bProjected)
     {
         float ViewportScale = UWidgetLayoutLibrary::GetViewportScale(this);
-        ScreenPos /= static_cast<double>(ViewportScale); // Å© UE5.3à»ç~ëŒâû
+        ScreenPos /= static_cast<double>(ViewportScale); //UE5.3à»ç~ëŒâû
 
         if (UCanvasPanelSlot* CanvasSlot = Cast<UCanvasPanelSlot>(CastMarkerImage->Slot))
         {
