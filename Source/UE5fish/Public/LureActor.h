@@ -36,8 +36,6 @@ public:
     AFishActor* HitFish;  // 表示用魚
 
 public:
-    
-
     ALureActor();
     virtual void Tick(float DeltaTime) override;
     virtual void BeginPlay() override;
@@ -55,6 +53,15 @@ public:
 
     bool IsReeling() const { return bIsBeingReeled; }
 
+    //フラグ
+    bool bIsInWaterVolume = false;
+    bool bCanCheckLanding = false;
+
+    //重なりイベント
+    virtual void NotifyActorEndOverlap(AActor* OtherActor) override;
+
+    virtual void NotifyHit(class UPrimitiveComponent* MyComp, AActor* Other, class UPrimitiveComponent* OtherComp, bool bSelfMoved, FVector HitLocation, FVector HitNormal, FVector NormalImpulse, const FHitResult& Hit) override;
+
 protected:
     // 投げた情報
     FVector StartLocation;
@@ -69,8 +76,8 @@ protected:
     bool bIsBeingReeled = false;
     bool bAirResistanceActive = false;
     FVector ReelTarget;
-   
-    
+ 
+    FTimerHandle AutoReelTimerHandle;
     FTimerHandle HitTimerHandle;
 
     // 設定可能パラメータ
@@ -88,6 +95,7 @@ protected:
 
     UPROPERTY(EditAnywhere, Category = "Reeling")
     float ReelArrivalThreshold = 25.f; // 竿先に到達とみなす距離
+
 
     // ランダムヒット範囲 (秒)
     UPROPERTY(EditAnywhere, Category = "Fish")

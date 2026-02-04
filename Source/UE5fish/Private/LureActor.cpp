@@ -4,6 +4,7 @@
 #include "FishingRodActor.h"
 #include "Components/StaticMeshComponent.h"
 #include "CableComponent.h"
+#include "FishingRodActor.h"
 #include "Kismet/GameplayStatics.h"
 #include "TimerManager.h"
 #include "Engine/World.h"
@@ -48,13 +49,25 @@ void ALureActor::BeginPlay()
 void ALureActor::LaunchLure(const FVector& InTarget, float InSpeed)
 {
     bIsFishHit = false;
+    bIsLaunched = true;
+    bIsInWaterVolume = false;
+    bCanCheckLanding = false; // ★これが false だと Tick 内の判定が一生動きません
+    bIsBeingReeled = false;
+
+    FTimerHandle LandingEnableTimer;
+    GetWorld()->GetTimerManager().SetTimer(LandingEnableTimer, [this]() {
+        bCanCheckLanding = true;
+        }, 0.2f, false);
+
     // 方向をまっすぐに
     StartLocation = GetActorLocation();
     LaunchDirection = (InTarget - StartLocation).GetSafeNormal();
     LaunchSpeed = InSpeed;
+    
 
     // 少し控えめに投げる（見た目調整）
     Mesh->SetSimulatePhysics(true);
+    Mesh->BodyInstance.bNotifyRigidBodyCollision = true;
     Mesh->SetPhysicsLinearVelocity(FVector::ZeroVector);
     Mesh->AddImpulse(LaunchDirection * LaunchSpeed, NAME_None, true);
 
@@ -68,10 +81,6 @@ void ALureActor::LaunchLure(const FVector& InTarget, float InSpeed)
 
     // ランダムヒットタイマー（既存スクリプトの意図を残す）
     float HitDelay = FMath::FRandRange(HitDelayRange.X, HitDelayRange.Y);
-    UE_LOG(LogTemp, Warning, TEXT("Setting Fish Hit Timer: %f seconds"), HitDelay);
-    GetWorld()->GetTimerManager().SetTimer(HitTimerHandle, this, &ALureActor::OnFishHitConfirmed, HitDelay, false);
-
-    
 }
 
 void ALureActor::EnableAirResistance()
@@ -81,16 +90,52 @@ void ALureActor::EnableAirResistance()
 
 void ALureActor::EndCast()
 {
-    // 投げ終了（物理OFF、速度を適度に落とす）
+    if (!bIsLaunched) return; // 二重実行防止
     bIsLaunched = false;
+
+    TArray<AActor*> OverlappingActors;
+    GetOverlappingActors(OverlappingActors);
+
+    //投げ終了（物理OFF、速度を適度に落とす）
     if (Mesh)
     {
-        FVector Vel = Mesh->GetPhysicsLinearVelocity();
-        Vel *= 0.4f; // 減速
-        Mesh->SetPhysicsLinearVelocity(Vel);
+        Mesh->SetPhysicsLinearVelocity(FVector::ZeroVector);
         Mesh->SetSimulatePhysics(false);
     }
 
+    bool bFinalWaterCheck = false;
+    for (AActor* Actor : OverlappingActors)
+    {
+        if (Actor && Actor->ActorHasTag(FName("WaterArea")))
+        {
+            bFinalWaterCheck = true;
+            break;
+        }
+    }
+
+    if (bFinalWaterCheck) // 飛んでいる最中のフラグではなく、今現在の重なりで判定
+    {
+        // --- 【水面：バトル開始】 ---
+        float HitDelay = FMath::FRandRange(HitDelayRange.X, HitDelayRange.Y);
+        GetWorld()->GetTimerManager().SetTimer(HitTimerHandle, this, &ALureActor::OnFishHitConfirmed, HitDelay, false);
+
+        UE_LOG(LogTemp, Warning, TEXT("Lure landed safely in WATER! Battle timer: %f"), HitDelay);
+    }
+    else
+    {
+        // --- 【陸地】 ---
+        UE_LOG(LogTemp, Warning, TEXT("Lure on Ground. Auto-reeling back..."));
+        if (AFishingRodActor* Rod = Cast<AFishingRodActor>(GetOwner()))
+        {
+            // 1. 竿側のフラグを「リール中」に書き換える（もしあれば）
+            Rod->bIsCasting = false; 
+
+            //ルアーを回収モードにする
+            SetBeingReeled(true, Rod->GetActorLocation());
+
+            UE_LOG(LogTemp, Warning, TEXT("Auto-reel started towards: %s"), *Rod->GetActorLocation().ToString());
+        }
+    }
     // Broadcast 水面ヒットの代替イベント（必要なら）
     OnHitWater.Broadcast();
 }
@@ -170,15 +215,48 @@ void ALureActor::NotifyActorBeginOverlap(AActor* OtherActor)
 {
     Super::NotifyActorBeginOverlap(OtherActor);
 
-    if (Cast<AFishActor>(OtherActor))
+    if (OtherActor && OtherActor->ActorHasTag(FName("WaterArea")))
     {
-        OnFishHitConfirmed();
+        // まだ投げている最中なら、即座にバトル判定へ
+        if (bIsLaunched && !bIsFishHit)
+        {
+            UE_LOG(LogTemp, Warning, TEXT("Water detected! Forcing EndCast."));
+
+            // 物理を止めて位置を固定
+            if (Mesh)
+            {
+                Mesh->SetPhysicsLinearVelocity(FVector::ZeroVector);
+                Mesh->SetSimulatePhysics(false);
+            }
+
+            bIsLaunched = false;
+            bIsInWaterVolume = true;
+
+            // 抽選開始（即ヒットさせたいなら HitDelay を 0.1f とかに設定）
+            float HitDelay = FMath::FRandRange(HitDelayRange.X, HitDelayRange.Y);
+            GetWorld()->GetTimerManager().SetTimer(HitTimerHandle, this, &ALureActor::OnFishHitConfirmed, HitDelay, false);
+        }
+    }
+}
+
+void ALureActor::NotifyActorEndOverlap(AActor* OtherActor)
+{
+    Super::NotifyActorEndOverlap(OtherActor);
+
+    if (!bIsLaunched) return;
+
+    if (OtherActor && OtherActor->ActorHasTag(FName("WaterArea")))
+    {
+        bIsInWaterVolume = false;
     }
 }
 
 void ALureActor::OnFishHitConfirmed()
 {
     if (bIsFishHit) return;
+
+    GetWorld()->GetTimerManager().ClearTimer(AutoReelTimerHandle);
+
     bIsFishHit = true;
     // デバッグ用：画面左上に小さく表示
     if (GEngine)
@@ -190,8 +268,6 @@ void ALureActor::OnFishHitConfirmed()
             TEXT("Hit判定")   // 表示テキスト
         );
     }
-    // 魚をスポーン
-    if (!FishClass) return;
 
     FActorSpawnParameters Params;
     HitFish = GetWorld()->SpawnActor<AFishActor>(
@@ -243,6 +319,22 @@ void ALureActor::ReelStep(float DeltaTime)
     SetActorLocation(NewPos);
 }
 
+void ALureActor::NotifyHit(UPrimitiveComponent* MyComp, AActor* Other, UPrimitiveComponent* OtherComp, bool bSelfMoved, FVector HitLocation, FVector HitNormal, FVector NormalImpulse, const FHitResult& Hit)
+{
+    Super::NotifyHit(MyComp, Other, OtherComp, bSelfMoved, HitLocation, HitNormal, NormalImpulse, Hit);
+
+    // 投げている最中に何かに当たったら
+    if (bIsLaunched && bCanCheckLanding && !bIsBeingReeled)
+    {
+        // それが水（Trigger）ではない固形物（地面など）なら
+        if (Other && !Other->ActorHasTag(FName("WaterArea")))
+        {
+            UE_LOG(LogTemp, Warning, TEXT("Lure HIT something solid: %s. Calling EndCast."), *Other->GetName());
+            EndCast();
+        }
+    }
+}
+
 void ALureActor::Tick(float DeltaTime)
 {
     Super::Tick(DeltaTime);
@@ -257,11 +349,17 @@ void ALureActor::Tick(float DeltaTime)
             Mesh->SetPhysicsLinearVelocity(Vel * (1.f - Damping));
         }
 
-        /*if (FVector::Distance(StartLocation, GetActorLocation()) >= MaxCastDistance ||
-            LaunchTime >= MaxCastTime)
+        if (bIsLaunched && bCanCheckLanding && !bIsBeingReeled)
         {
-            EndCast();
-        }*/
+            float CurrentSpeed = Mesh->GetPhysicsLinearVelocity().Size();
+
+            // 速度が非常に低い（着地した）状態が一定時間続いたら EndCast
+            if (CurrentSpeed < 30.0f)
+            {
+                UE_LOG(LogTemp, Warning, TEXT("Lure: Stopped moving. Calling EndCast."));
+                EndCast();
+            }
+        }
     }
 
     // リール中は一定速度で巻く

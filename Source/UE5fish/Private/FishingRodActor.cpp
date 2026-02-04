@@ -391,6 +391,20 @@ void AFishingRodActor::OnFishHitEvent()
 {
     UE_LOG(LogTemp, Warning, TEXT("Rod: HIT 受信"));
 
+    // --- バトル開始 ---
+    bIsFishBattle = true;
+    bIsReeling = false;
+    bIsCasting = false;
+    bHasCalledEndBattle = false;
+
+    float InitialGaugePercentage = 0.15f;
+    // 初期ゲージは任意（ここでは半分から開始）
+    PlayerGauge = GaugeMax * InitialGaugePercentage;
+    FishGauge = GaugeMax * InitialGaugePercentage;
+
+    // UIやBPへ通知
+    OnStartFishBattle.Broadcast();
+
     //オーディオ切り替え
     if (APlayerController* PC = GetWorld()->GetFirstPlayerController())
     {
@@ -399,7 +413,6 @@ void AFishingRodActor::OnFishHitEvent()
             HUD->UpdateFishingAudio(TEXT("Hit"));
         }
     }
-
 
     //プレイヤーのアニメーション
     if (AMyCharacter* MyChar = Cast<AMyCharacter>(GetOwner()))
@@ -419,26 +432,13 @@ void AFishingRodActor::OnFishHitEvent()
         SpawnFish();
     }
 
-    // --- バトル開始 ---
-    bIsFishBattle = true;
-    bIsReeling = false;
-    bIsCasting = false;
-
-
-    float InitialGaugePercentage = 0.15f;
-    // 初期ゲージは任意（ここでは半分から開始）
-    PlayerGauge = GaugeMax * InitialGaugePercentage;
-    FishGauge = GaugeMax * InitialGaugePercentage;
-
-    // UIやBPへ通知
-    OnStartFishBattle.Broadcast();
-
     // ルアーはバトル状態へ（移動停止など）
     if (CurrentLure)
     {
         FVector RodTip = RodMesh->GetSocketLocation(TEXT("RodTip"));
         CurrentLure->SetBeingReeled(false, RodTip);
     }
+   
 }
 
 void AFishingRodActor::OnReelClick()
