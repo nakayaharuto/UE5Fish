@@ -259,15 +259,15 @@ void ALureActor::OnFishHitConfirmed()
 
     bIsFishHit = true;
     // デバッグ用：画面左上に小さく表示
-    if (GEngine)
-    {
-        GEngine->AddOnScreenDebugMessage(
-            1,                // メッセージID（同じIDを使うと常に同じ位置に表示）
-            5.f,              // 表示時間（秒）
-            FColor::Yellow,   // 文字色
-            TEXT("Hit判定")   // 表示テキスト
-        );
-    }
+    //if (GEngine)
+    //{
+    //    GEngine->AddOnScreenDebugMessage(
+    //        1,                // メッセージID（同じIDを使うと常に同じ位置に表示）
+    //        5.f,              // 表示時間（秒）
+    //        FColor::Yellow,   // 文字色
+    //        TEXT("Hit判定")   // 表示テキスト
+    //    );
+    //}
 
     FActorSpawnParameters Params;
     HitFish = GetWorld()->SpawnActor<AFishActor>(
